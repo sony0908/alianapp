@@ -41,7 +41,7 @@
         max-width: 720px;
         min-height: 100dvh;
         margin: auto;
-        padding: 24px 20px 105px;
+        padding: 24px 20px calc(122px + env(safe-area-inset-bottom));
       }
       .top,
       .head,
@@ -144,6 +144,10 @@
         place-items: center;
         width: 76px;
         height: 76px;
+        min-width: 76px;
+        min-height: 76px;
+        flex: 0 0 76px;
+        aspect-ratio: 1 / 1;
         border: 5px solid var(--o);
         border-radius: 50%;
         background: var(--p);
@@ -180,7 +184,7 @@
       }
       .quick {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(2, 1fr);
         gap: 9px;
         margin-top: 11px;
       }
@@ -193,8 +197,15 @@
         font-weight: 750;
         font-size: 0.8rem;
       }
-      .quick button:first-letter {
-        font-size: 1.4rem;
+      .quick-icons,
+      .quick-mic {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 1.35rem;
+        line-height: 1;
+      }
+      .quick-icons {
+        letter-spacing: 0.08em;
       }
       .quick .on {
         border-color: var(--o);
@@ -377,11 +388,13 @@
         font-weight: 750;
       }
       .field input,
-      .field select {
+      .field select,
+      .field textarea {
         padding: 12px;
         border: 1px solid var(--l);
         border-radius: 13px;
         background: #fff;
+        font-size: 16px;
       }
       .details {
         display: none;
@@ -450,13 +463,14 @@
         <section class="section">
           <div class="head">
             <h2>Registro rápido</h2>
-            <button class="link" id="add">Añadir hora</button>
           </div>
           <div class="quick">
-            <button id="sleep">◐<br /><span>Siesta</span></button
-            ><button data-quick="feeding">◌<br />Leche</button
-            ><button data-quick="diaper">◒<br />Pañal</button
-            ><button id="voice">♬<br />Decirlo</button>
+            <button id="manualQuick">
+              <span class="quick-icons">◐ ◌ ◒</span><span>Registro manual</span>
+            </button>
+            <button id="voice">
+              <span class="quick-mic">🎙</span><span>Audio</span>
+            </button>
           </div>
         </section>
         <section class="section">
@@ -502,8 +516,7 @@
     </main>
     <nav class="nav">
       <button class="active" data-view="today">⌂<br />Hoy</button
-      ><button data-view="history">◷<br />Historia</button
-      ><button id="install">⇩<br />Instalar</button>
+      ><button data-view="history">◷<br />Historia</button>
     </nav>
     <dialog id="record">
       <form method="dialog" class="sheet">
@@ -600,7 +613,7 @@
       </section>
     </dialog>
     <div class="toast" id="toast"></div>
-  <script src="/app.js?v=20260911-1742"></script>
-  <script src="/family.js?v=20260911-1"></script>
+  <script src="/app.js?v=20260911-1800"></script>
+  <script src="/family.js?v=20260911-1800"></script>
   </body>
 </html>

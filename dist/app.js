@@ -14,7 +14,6 @@ let S = load(),
   pick = key(),
   edit = null,
   said = "",
-  defer,
   timer;
 function load() {
   try {
@@ -210,8 +209,7 @@ function age() {
 }
 function render() {
   let e = estimate(),
-    n = S.profile.name || "Bichito",
-    a = active();
+    n = S.profile.name || "Bichito";
   $("date").textContent = `${fmt(new Date())}${age() ? ` · ${age()}` : ""}`;
   $("heading").textContent = `El ritmo de ${n}`;
   $("nowTitle").textContent = e.t;
@@ -220,7 +218,6 @@ function render() {
   $("dot").style.left = e.d;
   $("nextTitle").textContent = e.n;
   $("nextCopy").textContent = e.q;
-  $("sleep").classList.toggle("on", !!a);
   $("learn").textContent = e.mo.learn
     ? `Aprendiendo de ${e.mo.n} ventanas reales: su promedio actual es ${mins(e.mo.m)} despierto.`
     : `Faltan ${2 - e.mo.n} ventana${2 - e.mo.n === 1 ? "" : "s"} completa${2 - e.mo.n === 1 ? "" : "s"} para personalizar. Por ahora usamos ${mins(e.mo.m)}.`;
@@ -332,17 +329,7 @@ function open(e) {
   fields();
   $("record").showModal();
 }
-$("sleep").onclick = () => open({
-  type: active() ? "sleepEnd" : "sleepStart",
-  time: new Date().toISOString(),
-});
-document.querySelectorAll("[data-quick]").forEach((button) => {
-  button.onclick = () => open({
-    type: button.dataset.quick,
-    time: new Date().toISOString(),
-  });
-});
-$("add").onclick = () => open();
+$("manualQuick").onclick = () => open();
 $("type").onchange = fields;
 $("save").onclick = (e) => {
   e.preventDefault();
@@ -483,22 +470,6 @@ $("saveTalk").onclick = () => {
   else if (t.includes("pañal") || t.includes("panal")) add("diaper");
   else add("note", new Date().toISOString(), {}, text);
   $("talk").close();
-};
-window.addEventListener("beforeinstallprompt", (e) => {
-  e.preventDefault();
-  defer = e;
-});
-$("install").onclick = async () => {
-  if (defer) {
-    defer.prompt();
-    await defer.userChoice;
-    defer = null;
-  } else
-    toast(
-      /iPhone|iPad|iPod/.test(navigator.userAgent)
-        ? "En Safari: Compartir → Añadir a pantalla de inicio."
-        : "Usa el menú para instalar Bichito.",
-    );
 };
 // Bichito prioriza estar al día: elimina el caché offline legado al abrirse.
 // La aplicación instalada seguirá funcionando, pero necesitará conexión.
