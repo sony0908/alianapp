@@ -3,7 +3,19 @@
   "cleanUrls": true,
   "headers": [
     {
-      "source": "/(index.html|app.js|service-worker.js)",
+      "source": "/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, max-age=0" }
+      ]
+    },
+    {
+      "source": "/app.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, max-age=0" }
+      ]
+    },
+    {
+      "source": "/service-worker.js",
       "headers": [
         { "key": "Cache-Control", "value": "no-store, max-age=0" }
       ]
