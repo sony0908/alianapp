@@ -51,6 +51,10 @@
         justify-content: space-between;
         gap: 12px;
       }
+      .top-actions {
+        display: flex;
+        gap: 7px;
+      }
       .brand {
         font-size: 1.35rem;
         font-weight: 850;
@@ -76,6 +80,10 @@
         border: 1px solid var(--l);
         border-radius: 14px;
         background: var(--s);
+      }
+      .icon.cloud-ready {
+        border-color: var(--b);
+        color: #3f7196;
       }
       .date {
         margin: 32px 0 5px;
@@ -508,7 +516,10 @@
     <main class="app">
       <header class="top">
         <div class="brand"><b>◡</b>Bichito</div>
-        <button class="icon" id="settings">⚙</button>
+        <div class="top-actions">
+          <button class="icon" id="cloud" title="Nube familiar" aria-label="Nube familiar">☁</button>
+          <button class="icon" id="settings">⚙</button>
+        </div>
       </header>
       <section id="today">
         <p class="date" id="date"></p>
@@ -684,5 +695,6 @@
     <div class="toast" id="toast"></div>
   <script src="/app.js?v=20260911-1830"></script>
   <script src="/family.js?v=20260911-1900"></script>
+  <script type="module" src="/cloud.js?v=20260911-2000"></script>
   </body>
 </html>

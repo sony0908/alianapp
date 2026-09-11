@@ -21,6 +21,12 @@
       ]
     },
     {
+      "source": "/cloud.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, max-age=0" }
+      ]
+    },
+    {
       "source": "/service-worker.js",
       "headers": [
         { "key": "Cache-Control", "value": "no-store, max-age=0" }
