@@ -1,3 +1,605 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#df7446"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Bichito"><link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/favicon.svg"><title>Bichito</title><style>
-:root{--o:#df7446;--os:#fde3d5;--b:#5e9dcc;--bs:#e0eff9;--i:#26313b;--m:#69747e;--p:#fff8f2;--s:#fffdfb;--l:#eee2d8}*{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#fff8f2,#fff5ee 55%,#f3f6fa);color:var(--i);font:16px ui-rounded,"SF Pro Rounded",system-ui,sans-serif}.app{max-width:720px;min-height:100dvh;margin:auto;padding:24px 20px 105px}.top,.head,.row{display:flex;align-items:center;justify-content:space-between;gap:12px}.brand{font-size:1.35rem;font-weight:850}.brand b{display:inline-grid;place-items:center;width:34px;height:34px;margin-right:8px;border-radius:12px;background:var(--o);color:#fff}.icon,button{font:inherit;cursor:pointer}.icon{width:42px;height:42px;border:1px solid var(--l);border-radius:14px;background:var(--s)}.date{margin:32px 0 5px;color:var(--m);font-size:.86rem;font-weight:700}h1{margin:0;font-size:clamp(1.8rem,6vw,2.4rem);letter-spacing:-.06em}h2{margin:0;font-size:1.05rem}.card,.panel{background:var(--s);border-radius:25px;box-shadow:0 14px 34px #5b392312}.card{position:relative;overflow:hidden;padding:23px;margin-top:17px}.card:after{content:"";position:absolute;right:-70px;top:-85px;width:180px;height:180px;border-radius:50%;background:var(--os)}.card>*{position:relative;z-index:1}.state{font-size:.76rem;color:var(--m);letter-spacing:.09em;font-weight:800;text-transform:uppercase}.title{margin:5px 0;font-size:1.35rem;font-weight:850}.copy,.small{color:var(--m);line-height:1.45}.copy{margin:0;font-size:.93rem}.timer{display:grid;place-items:center;width:76px;height:76px;border:5px solid var(--o);border-radius:50%;background:var(--p);font-size:.84rem;font-weight:800;text-align:center}.bar{position:relative;height:9px;margin-top:24px;border-radius:20px;background:linear-gradient(90deg,var(--b),#b5cad9 40%,#e5ad78 70%,var(--o))}.dot{position:absolute;top:-4px;left:15%;width:18px;height:18px;border:3px solid var(--i);border-radius:50%;background:#fff;transition:.3s}.section{margin-top:27px}.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:11px}.quick button{min-height:78px;border:1px solid var(--l);border-radius:17px;background:var(--s);color:var(--i);font-weight:750;font-size:.8rem}.quick button:first-letter{font-size:1.4rem}.quick .on{border-color:var(--o);background:var(--os)}.next,.learn{margin-top:11px;padding:14px;border:1px solid var(--l);border-radius:18px;background:var(--s)}.learn{border:0;background:var(--bs);color:#3f7196;font-size:.82rem;line-height:1.4}.timeline{display:grid;gap:9px;margin-top:11px}.row{padding:12px;border:1px solid var(--l);border-radius:17px;background:var(--s)}.row .main{flex:1;min-width:0;text-align:left;border:0;background:transparent;color:var(--i)}.row b,.row small{display:block}.row small{margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.row time{color:var(--m);font-size:.8rem}.x,.link{border:0;background:transparent;color:var(--o);font-weight:800}.empty{padding:22px;border:1px dashed #d9cbbf;border-radius:18px;color:var(--m);text-align:center}.nav{position:fixed;z-index:4;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);display:grid;grid-template-columns:repeat(3,1fr);width:min(430px,calc(100% - 28px));padding:7px;border:1px solid var(--l);border-radius:22px;background:#fffdfbe8;box-shadow:0 13px 35px #402c2029;backdrop-filter:blur(15px)}.nav button{border:0;border-radius:15px;padding:8px;background:transparent;color:var(--m);font-size:.75rem}.nav .active{background:var(--os);color:var(--o);font-weight:800}.panel{padding:18px;margin-top:18px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}.stat{padding:11px 5px;border-radius:15px;background:#f8f0eb;text-align:center}.stat b,.stat span{display:block}.stat span{margin-top:3px;color:var(--m);font-size:.7rem}.days{display:grid;gap:8px}.day{width:100%;text-align:left}.day.selected{border-color:var(--o);background:var(--os)}.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:15px}.secondary,.primary{width:100%;padding:13px;border-radius:15px;font-weight:800}.secondary{border:1px solid var(--l);background:var(--s);color:var(--i)}.primary{border:0;background:var(--o);color:#fff}.hide{display:none!important}dialog{width:min(500px,calc(100% - 30px));border:0;border-radius:24px;padding:0;background:var(--s);color:var(--i);box-shadow:0 28px 90px #231d1844}dialog::backdrop{background:#27221d65}.sheet{padding:21px}.field{display:grid;gap:6px;margin-top:15px;font-size:.88rem;font-weight:750}.field input,.field select{padding:12px;border:1px solid var(--l);border-radius:13px;background:#fff}.details{display:none}.details.show{display:block}.check{display:flex;gap:9px;align-items:flex-start;margin:17px 0;font-size:.87rem;font-weight:650}.note{font-size:.82rem;color:var(--m);line-height:1.45}.toast{position:fixed;z-index:5;left:50%;bottom:100px;transform:translate(-50%,15px);padding:11px 15px;border-radius:14px;background:var(--i);color:#fff;opacity:0;transition:.2s}.toast.show{opacity:1;transform:translate(-50%,0)}@media(min-width:700px){.app{padding-left:32px;padding-right:32px}}
-</style></head><body><main class="app"><header class="top"><div class="brand"><b>◡</b>Bichito</div><button class="icon" id="settings">⚙</button></header><section id="today"><p class="date" id="date"></p><h1 id="heading">El ritmo de Bichito</h1><article class="card"><div class="head"><div><div class="state">Ahora</div><div class="title" id="nowTitle"></div><p class="copy" id="nowCopy"></p></div><div class="timer" id="timer"></div></div><div class="bar"><i class="dot" id="dot"></i></div></article><section class="section"><div class="head"><h2>Registro rápido</h2><button class="link" id="add">Añadir hora</button></div><div class="quick"><button id="sleep">◐<br><span>Siesta</span></button><button data-quick="feeding">◌<br>Leche</button><button data-quick="diaper">◒<br>Pañal</button><button id="voice">♬<br>Decirlo</button></div></section><section class="section"><h2>Próximo momento</h2><div class="next"><b id="nextTitle"></b><div class="small" id="nextCopy"></div></div><div class="learn" id="learn"></div></section><section class="section"><div class="head"><h2 id="listTitle">Hoy</h2><button class="link" id="clear">Limpiar día</button></div><div class="timeline" id="list"></div></section></section><section id="history" class="hide"><p class="date">Tu registro local</p><h1>Historia y ritmo</h1><article class="panel"><h2>Últimos 7 días</h2><p class="small">Toca un día para revisarlo y editar sus registros.</p><div class="stats" id="stats"></div><div class="days" id="days"></div><hr style="border:0;border-top:1px solid var(--l);margin:17px 0"><h2>Respaldo</h2><p class="note">Guarda una copia o recupérala en este mismo dispositivo.</p><div class="actions"><button class="secondary" id="export">Descargar copia</button><button class="secondary" id="import">Recuperar copia</button></div><input class="hide" type="file" id="file" accept="application/json"></article></section></main><nav class="nav"><button class="active" data-view="today">⌂<br>Hoy</button><button data-view="history">◷<br>Historia</button><button id="install">⇩<br>Instalar</button></nav><dialog id="record"><form method="dialog" class="sheet"><div class="head"><h2 id="recordTitle">Añadir registro</h2><button class="x">×</button></div><label class="field">Tipo<select id="type"><option value="sleepStart">Inicio de siesta</option><option value="sleepEnd">Fin de siesta</option><option value="feeding">Leche</option><option value="diaper">Pañal</option><option value="note">Nota</option></select></label><label class="field">Fecha y hora<input id="time" type="datetime-local"></label><div class="details" id="feedFields"><label class="field">Cómo tomó<select id="method"><option value="">Sin detalle</option><option>Pecho</option><option>Mamadera</option><option>Otro</option></select></label><label class="field">Cantidad ml (opcional)<input id="amount" type="number" min="0"></label></div><div class="details" id="diaperFields"><label class="field">Tipo<select id="kind"><option value="">Sin detalle</option><option>Solo pipí</option><option>Caca</option><option>Mixto</option></select></label></div><div class="details" id="noteFields"><label class="field">Nota<input id="note" maxlength="180"></label></div><button class="primary" id="save" value="default">Guardar registro</button><button class="secondary hide" type="button" id="remove">Eliminar este registro</button></form></dialog><dialog id="prefs"><section class="sheet"><div class="head"><h2>Perfil y ajustes</h2><button class="x" id="closePrefs">×</button></div><label class="field">Nombre o apodo<input id="name" maxlength="24"></label><label class="field">Fecha de nacimiento (opcional)<input id="birth" type="date"></label><label class="field">Ventana despierto inicial<select id="wake"><option value="60">1 hora</option><option value="90">1 h 30 min</option><option value="120">2 h</option><option value="150">2 h 30 min</option><option value="180">3 h</option></select></label><label class="check"><input id="remind" type="checkbox">Avisarme mientras Bichito está abierto cuando se acerque la siesta.</label><button class="primary" id="savePrefs">Guardar ajustes</button><p class="note">La predicción se adapta con las siestas reales. Los avisos aún no funcionan con la app cerrada.</p></section></dialog><dialog id="talk"><section class="sheet"><div class="head"><h2>Cuéntame</h2><button class="x" id="closeTalk">×</button></div><p class="note">Por ejemplo: “tomó leche”, “cambio de pañal” o “empezó la siesta”.</p><p class="panel small" id="heard">Toca el botón y habla.</p><button class="primary" id="listen">Empezar a escuchar</button><button class="secondary" id="saveTalk">Guardar como nota</button></section></dialog><div class="toast" id="toast"></div><script src="/app.js"></script></body></html>
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#df7446" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Bichito" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/favicon.svg" />
+    <title>Bichito</title>
+    <style>
+      :root {
+        --o: #df7446;
+        --os: #fde3d5;
+        --b: #5e9dcc;
+        --bs: #e0eff9;
+        --i: #26313b;
+        --m: #69747e;
+        --p: #fff8f2;
+        --s: #fffdfb;
+        --l: #eee2d8;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: linear-gradient(145deg, #fff8f2, #fff5ee 55%, #f3f6fa);
+        color: var(--i);
+        font:
+          16px ui-rounded,
+          "SF Pro Rounded",
+          system-ui,
+          sans-serif;
+      }
+      .app {
+        max-width: 720px;
+        min-height: 100dvh;
+        margin: auto;
+        padding: 24px 20px 105px;
+      }
+      .top,
+      .head,
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .brand {
+        font-size: 1.35rem;
+        font-weight: 850;
+      }
+      .brand b {
+        display: inline-grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        margin-right: 8px;
+        border-radius: 12px;
+        background: var(--o);
+        color: #fff;
+      }
+      .icon,
+      button {
+        font: inherit;
+        cursor: pointer;
+      }
+      .icon {
+        width: 42px;
+        height: 42px;
+        border: 1px solid var(--l);
+        border-radius: 14px;
+        background: var(--s);
+      }
+      .date {
+        margin: 32px 0 5px;
+        color: var(--m);
+        font-size: 0.86rem;
+        font-weight: 700;
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(1.8rem, 6vw, 2.4rem);
+        letter-spacing: -0.06em;
+      }
+      h2 {
+        margin: 0;
+        font-size: 1.05rem;
+      }
+      .card,
+      .panel {
+        background: var(--s);
+        border-radius: 25px;
+        box-shadow: 0 14px 34px #5b392312;
+      }
+      .card {
+        position: relative;
+        overflow: hidden;
+        padding: 23px;
+        margin-top: 17px;
+      }
+      .card:after {
+        content: "";
+        position: absolute;
+        right: -70px;
+        top: -85px;
+        width: 180px;
+        height: 180px;
+        border-radius: 50%;
+        background: var(--os);
+      }
+      .card > * {
+        position: relative;
+        z-index: 1;
+      }
+      .state {
+        font-size: 0.76rem;
+        color: var(--m);
+        letter-spacing: 0.09em;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+      .title {
+        margin: 5px 0;
+        font-size: 1.35rem;
+        font-weight: 850;
+      }
+      .copy,
+      .small {
+        color: var(--m);
+        line-height: 1.45;
+      }
+      .copy {
+        margin: 0;
+        font-size: 0.93rem;
+      }
+      .timer {
+        display: grid;
+        place-items: center;
+        width: 76px;
+        height: 76px;
+        border: 5px solid var(--o);
+        border-radius: 50%;
+        background: var(--p);
+        font-size: 0.84rem;
+        font-weight: 800;
+        text-align: center;
+      }
+      .bar {
+        position: relative;
+        height: 9px;
+        margin-top: 24px;
+        border-radius: 20px;
+        background: linear-gradient(
+          90deg,
+          var(--b),
+          #b5cad9 40%,
+          #e5ad78 70%,
+          var(--o)
+        );
+      }
+      .dot {
+        position: absolute;
+        top: -4px;
+        left: 15%;
+        width: 18px;
+        height: 18px;
+        border: 3px solid var(--i);
+        border-radius: 50%;
+        background: #fff;
+        transition: 0.3s;
+      }
+      .section {
+        margin-top: 27px;
+      }
+      .quick {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 9px;
+        margin-top: 11px;
+      }
+      .quick button {
+        min-height: 78px;
+        border: 1px solid var(--l);
+        border-radius: 17px;
+        background: var(--s);
+        color: var(--i);
+        font-weight: 750;
+        font-size: 0.8rem;
+      }
+      .quick button:first-letter {
+        font-size: 1.4rem;
+      }
+      .quick .on {
+        border-color: var(--o);
+        background: var(--os);
+      }
+      .next,
+      .learn {
+        margin-top: 11px;
+        padding: 14px;
+        border: 1px solid var(--l);
+        border-radius: 18px;
+        background: var(--s);
+      }
+      .learn {
+        border: 0;
+        background: var(--bs);
+        color: #3f7196;
+        font-size: 0.82rem;
+        line-height: 1.4;
+      }
+      .timeline {
+        display: grid;
+        gap: 9px;
+        margin-top: 11px;
+      }
+      .row {
+        padding: 12px;
+        border: 1px solid var(--l);
+        border-radius: 17px;
+        background: var(--s);
+      }
+      .row .main {
+        flex: 1;
+        min-width: 0;
+        text-align: left;
+        border: 0;
+        background: transparent;
+        color: var(--i);
+      }
+      .row b,
+      .row small {
+        display: block;
+      }
+      .row small {
+        margin-top: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .row time {
+        color: var(--m);
+        font-size: 0.8rem;
+      }
+      .x,
+      .link {
+        border: 0;
+        background: transparent;
+        color: var(--o);
+        font-weight: 800;
+      }
+      .empty {
+        padding: 22px;
+        border: 1px dashed #d9cbbf;
+        border-radius: 18px;
+        color: var(--m);
+        text-align: center;
+      }
+      .nav {
+        position: fixed;
+        z-index: 4;
+        left: 50%;
+        bottom: calc(10px + env(safe-area-inset-bottom));
+        transform: translateX(-50%);
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        width: min(430px, calc(100% - 28px));
+        padding: 7px;
+        border: 1px solid var(--l);
+        border-radius: 22px;
+        background: #fffdfbe8;
+        box-shadow: 0 13px 35px #402c2029;
+        backdrop-filter: blur(15px);
+      }
+      .nav button {
+        border: 0;
+        border-radius: 15px;
+        padding: 8px;
+        background: transparent;
+        color: var(--m);
+        font-size: 0.75rem;
+      }
+      .nav .active {
+        background: var(--os);
+        color: var(--o);
+        font-weight: 800;
+      }
+      .panel {
+        padding: 18px;
+        margin-top: 18px;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin: 16px 0;
+      }
+      .stat {
+        padding: 11px 5px;
+        border-radius: 15px;
+        background: #f8f0eb;
+        text-align: center;
+      }
+      .stat b,
+      .stat span {
+        display: block;
+      }
+      .stat span {
+        margin-top: 3px;
+        color: var(--m);
+        font-size: 0.7rem;
+      }
+      .days {
+        display: grid;
+        gap: 8px;
+      }
+      .day {
+        width: 100%;
+        text-align: left;
+      }
+      .day.selected {
+        border-color: var(--o);
+        background: var(--os);
+      }
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 9px;
+        margin-top: 15px;
+      }
+      .secondary,
+      .primary {
+        width: 100%;
+        padding: 13px;
+        border-radius: 15px;
+        font-weight: 800;
+      }
+      .secondary {
+        border: 1px solid var(--l);
+        background: var(--s);
+        color: var(--i);
+      }
+      .primary {
+        border: 0;
+        background: var(--o);
+        color: #fff;
+      }
+      .hide {
+        display: none !important;
+      }
+      dialog {
+        width: min(500px, calc(100% - 30px));
+        border: 0;
+        border-radius: 24px;
+        padding: 0;
+        background: var(--s);
+        color: var(--i);
+        box-shadow: 0 28px 90px #231d1844;
+      }
+      dialog::backdrop {
+        background: #27221d65;
+      }
+      .sheet {
+        padding: 21px;
+      }
+      .field {
+        display: grid;
+        gap: 6px;
+        margin-top: 15px;
+        font-size: 0.88rem;
+        font-weight: 750;
+      }
+      .field input,
+      .field select {
+        padding: 12px;
+        border: 1px solid var(--l);
+        border-radius: 13px;
+        background: #fff;
+      }
+      .details {
+        display: none;
+      }
+      .details.show {
+        display: block;
+      }
+      .check {
+        display: flex;
+        gap: 9px;
+        align-items: flex-start;
+        margin: 17px 0;
+        font-size: 0.87rem;
+        font-weight: 650;
+      }
+      .note {
+        font-size: 0.82rem;
+        color: var(--m);
+        line-height: 1.45;
+      }
+      .toast {
+        position: fixed;
+        z-index: 5;
+        left: 50%;
+        bottom: 100px;
+        transform: translate(-50%, 15px);
+        padding: 11px 15px;
+        border-radius: 14px;
+        background: var(--i);
+        color: #fff;
+        opacity: 0;
+        transition: 0.2s;
+      }
+      .toast.show {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+      @media (min-width: 700px) {
+        .app {
+          padding-left: 32px;
+          padding-right: 32px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header class="top">
+        <div class="brand"><b>◡</b>Bichito</div>
+        <button class="icon" id="settings">⚙</button>
+      </header>
+      <section id="today">
+        <p class="date" id="date"></p>
+        <h1 id="heading">El ritmo de Bichito</h1>
+        <article class="card">
+          <div class="head">
+            <div>
+              <div class="state">Ahora</div>
+              <div class="title" id="nowTitle"></div>
+              <p class="copy" id="nowCopy"></p>
+            </div>
+            <div class="timer" id="timer"></div>
+          </div>
+          <div class="bar"><i class="dot" id="dot"></i></div>
+        </article>
+        <section class="section">
+          <div class="head">
+            <h2>Registro rápido</h2>
+            <button class="link" id="add">Añadir hora</button>
+          </div>
+          <div class="quick">
+            <button id="sleep">◐<br /><span>Siesta</span></button
+            ><button data-quick="feeding">◌<br />Leche</button
+            ><button data-quick="diaper">◒<br />Pañal</button
+            ><button id="voice">♬<br />Decirlo</button>
+          </div>
+        </section>
+        <section class="section">
+          <h2>Próximo momento</h2>
+          <div class="next">
+            <b id="nextTitle"></b>
+            <div class="small" id="nextCopy"></div>
+          </div>
+          <div class="learn" id="learn"></div>
+        </section>
+        <section class="section">
+          <div class="head">
+            <h2 id="listTitle">Hoy</h2>
+            <button class="link" id="clear">Limpiar día</button>
+          </div>
+          <div class="timeline" id="list"></div>
+        </section>
+      </section>
+      <section id="history" class="hide">
+        <p class="date">Tu registro local</p>
+        <h1>Historia y ritmo</h1>
+        <article class="panel">
+          <h2>Últimos 7 días</h2>
+          <p class="small">
+            Toca un día para revisarlo y editar sus registros.
+          </p>
+          <div class="stats" id="stats"></div>
+          <div class="days" id="days"></div>
+          <hr
+            style="border: 0; border-top: 1px solid var(--l); margin: 17px 0"
+          />
+          <h2>Respaldo</h2>
+          <p class="note">
+            Guarda una copia o recupérala en este mismo dispositivo.
+          </p>
+          <div class="actions">
+            <button class="secondary" id="export">Descargar copia</button
+            ><button class="secondary" id="import">Recuperar copia</button>
+          </div>
+          <input class="hide" type="file" id="file" accept="application/json" />
+        </article>
+      </section>
+    </main>
+    <nav class="nav">
+      <button class="active" data-view="today">⌂<br />Hoy</button
+      ><button data-view="history">◷<br />Historia</button
+      ><button id="install">⇩<br />Instalar</button>
+    </nav>
+    <dialog id="record">
+      <form method="dialog" class="sheet">
+        <div class="head">
+          <h2 id="recordTitle">Añadir registro</h2>
+          <button class="x">×</button>
+        </div>
+        <label class="field"
+          >Tipo<select id="type">
+            <option value="sleepStart">Inicio de siesta</option>
+            <option value="sleepEnd">Fin de siesta</option>
+            <option value="feeding">Leche</option>
+            <option value="diaper">Pañal</option>
+            <option value="note">Nota</option>
+          </select></label
+        ><label class="field"
+          >Fecha y hora<input id="time" type="datetime-local"
+        /></label>
+        <div class="details" id="feedFields">
+          <label class="field"
+            >Cómo tomó<select id="method">
+              <option value="">Sin detalle</option>
+              <option>Pecho</option>
+              <option>Mamadera</option>
+              <option>Otro</option>
+            </select></label
+          ><label class="field"
+            >Cantidad ml (opcional)<input id="amount" type="number" min="0"
+          /></label>
+        </div>
+        <div class="details" id="diaperFields">
+          <label class="field"
+            >Tipo<select id="kind">
+              <option value="">Sin detalle</option>
+              <option>Solo pipí</option>
+              <option>Caca</option>
+              <option>Mixto</option>
+            </select></label
+          >
+        </div>
+        <div class="details" id="noteFields">
+          <label class="field">Nota<input id="note" maxlength="180" /></label>
+        </div>
+        <button class="primary" id="save" value="default">
+          Guardar registro</button
+        ><button class="secondary hide" type="button" id="remove">
+          Eliminar este registro
+        </button>
+      </form>
+    </dialog>
+    <dialog id="prefs">
+      <section class="sheet">
+        <div class="head">
+          <h2>Perfil y ajustes</h2>
+          <button class="x" id="closePrefs">×</button>
+        </div>
+        <label class="field"
+          >Nombre o apodo<input id="name" maxlength="24" /></label
+        ><label class="field"
+          >Fecha de nacimiento (opcional)<input id="birth" type="date" /></label
+        ><label class="field"
+          >Ventana despierto inicial<select id="wake">
+            <option value="60">1 hora</option>
+            <option value="90">1 h 30 min</option>
+            <option value="120">2 h</option>
+            <option value="150">2 h 30 min</option>
+            <option value="180">3 h</option>
+          </select></label
+        ><label class="check"
+          ><input id="remind" type="checkbox" />Avisarme mientras Bichito está
+          abierto cuando se acerque la siesta.</label
+        ><button class="primary" id="savePrefs">Guardar ajustes</button>
+        <p class="note">
+          La predicción se adapta con las siestas reales. Los avisos aún no
+          funcionan con la app cerrada.
+        </p>
+      </section>
+    </dialog>
+    <dialog id="talk">
+      <section class="sheet">
+        <div class="head">
+          <h2>Cuéntame</h2>
+          <button class="x" id="closeTalk">×</button>
+        </div>
+        <p class="note">
+          Por ejemplo: “tomó leche”, “cambio de pañal” o “empezó la siesta”.
+        </p>
+        <p class="panel small" id="heard">Toca el botón y habla.</p>
+        <label class="field">Nota reconocida o escrita
+          <textarea id="voiceText" rows="3" placeholder="Escribe aquí si el dictado no transcribe tu voz."></textarea>
+        </label>
+        <button class="primary" id="listen">Empezar a escuchar</button
+        ><button class="secondary" id="saveTalk">Guardar como nota</button>
+      </section>
+    </dialog>
+    <div class="toast" id="toast"></div>
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -1,10 +1,501 @@
-const K='bichito-v2',O='bichito-data-v1',$=x=>document.getElementById(x),blank={events:[],profile:{name:'Bichito',birthDate:'',wakeWindow:120,reminder:false}};let S=load(),pick=key(),edit=null,said='',defer,timer;
-function load(){try{let x=JSON.parse(localStorage.getItem(K)||'null');if(!x){let o=JSON.parse(localStorage.getItem(O)||'null');x=o&&{events:o.events,profile:{name:o.settings?.name||'Bichito',wakeWindow:o.settings?.wakeWindow||120}}}return {events:x?.events||[],profile:{...blank.profile,...x?.profile}}}catch{return structuredClone(blank)}}function save(){localStorage.setItem(K,JSON.stringify(S))}function key(d=new Date()){d=new Date(d);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function date(k){return new Date(`${k}T12:00:00`)}function fmt(d){return new Intl.DateTimeFormat('es-CL',{weekday:'long',day:'numeric',month:'long'}).format(new Date(d)).replace(/^./,x=>x.toUpperCase())}function clock(d){return new Intl.DateTimeFormat('es-CL',{hour:'2-digit',minute:'2-digit'}).format(new Date(d))}function input(d){d=new Date(d);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)}function id(){return crypto.randomUUID?.()||`${Date.now()}${Math.random()}`}function all(){return [...S.events].sort((a,b)=>new Date(a.time)-new Date(b.time))}function events(d=pick){return S.events.filter(x=>key(x.time)===d).sort((a,b)=>new Date(b.time)-new Date(a.time))}function esc(s){let e=document.createElement('i');e.textContent=s;return e.innerHTML}
-const M={sleepStart:['Comenzó una siesta','◐'],sleepEnd:['Terminó una siesta','◑'],feeding:['Tomó leche','◌'],diaper:['Cambio de pañal','◒'],note:['Nota','•']};function detail(e){if(e.type==='feeding')return [e.details?.method,e.details?.amount&&`${e.details.amount} ml`].filter(Boolean).join(' · ');if(e.type==='diaper')return e.details?.kind||'';return e.note||''}function add(type,time=new Date().toISOString(),details={},note=''){S.events.push({id:id(),type,time,details,note});save();render();toast('Registro guardado')}
-function active(){let a=null;for(const e of all()){if(e.type==='sleepStart')a=e;if(e.type==='sleepEnd')a=null}return a}function samples(){let a=all(),v=[];for(let i=0;i<a.length;i++)if(a[i].type==='sleepEnd'){let n=a.slice(i+1).find(x=>x.type==='sleepStart');let m=n&&(new Date(n.time)-new Date(a[i].time))/60000;if(m>=35&&m<=360)v.push(m)}return v.slice(-12)}function model(){let a=samples();if(a.length<2)return {m:+S.profile.wakeWindow,n:a.length,learn:false};let mid=[...a].sort((x,y)=>x-y)[Math.floor(a.length/2)],v=a.filter(x=>Math.abs(x-mid)<90),w=v.reduce((s,x,i)=>s+x*(i+1),0)/v.reduce((s,x,i)=>s+i+1,0);return {m:Math.round(w/5)*5,n:a.length,learn:true}}function mins(n){return n>=60?`${Math.floor(n/60)} h${n%60?` ${n%60} min`:''}`:`${n} min`}function estimate(){let a=active(),mo=model();if(a)return {t:'Está descansando',c:'La siesta sigue en curso. Cuando despierte, toca Siesta otra vez.',z:'Zzz',d:'78%',n:'Cuando despierte, recalculamos',q:'El ritmo se ajustará con este descanso.',mo};let last=all().filter(x=>x.type==='sleepEnd').at(-1);if(!last)return {t:'Un comienzo tranquilo',c:'Registra siestas completas para que aprendamos su ritmo.',z:'Listo',d:'14%',n:'Aún estamos aprendiendo',q:'Usaremos la ventana inicial mientras reúne datos.',mo};let target=new Date(+new Date(last.time)+mo.m*60000),left=Math.round((target-Date.now())/60000);return left<=0?{t:'Ventana de descanso',c:'Según su ritmo, parece un buen momento para bajar el ritmo.',z:'Ahora',d:'82%',n:'La siesta puede ser ahora',q:'Estimación basada en sus últimos descansos.',mo,target}:{t:'Tiempo despierto',c:`La próxima ventana se acerca a las ${clock(target)}.`,z:`${left} min`,d:left<30?'70%':'47%',n:`Próxima siesta: ${clock(target)}`,q:`En aproximadamente ${left} minutos.`,mo,target}}
-function sleep(d){let s,total=0;for(const e of events(d).reverse()){if(e.type==='sleepStart')s=e;if(e.type==='sleepEnd'&&s){total+=(+new Date(e.time)-+new Date(s.time))/60000;s=null}}return Math.max(0,Math.round(total))}function age(){if(!S.profile.birthDate)return '';let n=Math.floor((Date.now()-new Date(`${S.profile.birthDate}T12:00`))/864e5);return n<31?`${n} días`:`${Math.floor(n/30.44)} meses`}
-function render(){let e=estimate(),n=S.profile.name||'Bichito',a=active();$('date').textContent=`${fmt(new Date())}${age()?` · ${age()}`:''}`;$('heading').textContent=`El ritmo de ${n}`;$('nowTitle').textContent=e.t;$('nowCopy').textContent=e.c;$('timer').textContent=e.z;$('dot').style.left=e.d;$('nextTitle').textContent=e.n;$('nextCopy').textContent=e.q;$('sleep').classList.toggle('on',!!a);$('learn').textContent=e.mo.learn?`Aprendiendo de ${e.mo.n} ventanas reales: su promedio actual es ${mins(e.mo.m)} despierto.`:`Faltan ${2-e.mo.n} ventana${2-e.mo.n===1?'':'s'} completa${2-e.mo.n===1?'':'s'} para personalizar. Por ahora usamos ${mins(e.mo.m)}.`;list();history();reminder(e)}function list(){let a=events();$('listTitle').textContent=pick===key()?'Hoy':fmt(date(pick));$('clear').classList.toggle('hide',pick!==key());$('list').innerHTML=a.length?a.map(e=>`<article class="row"><span>${M[e.type][1]}</span><button class="main" data-edit="${e.id}"><b>${M[e.type][0]}</b>${detail(e)?`<small>${esc(detail(e))}</small>`:''}</button><time>${clock(e.time)}</time><button class="x" data-del="${e.id}">×</button></article>`).join(''):'<div class="empty">Todavía no hay registros en este día.</div>';document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>open(S.events.find(e=>e.id===b.dataset.edit)));document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{if(confirm('¿Eliminar este registro?')){S.events=S.events.filter(e=>e.id!==b.dataset.del);save();render();toast('Registro eliminado')}})}function history(){let ds=Array.from({length:7},(_,i)=>{let d=new Date();d.setDate(d.getDate()-i);return key(d)}),es=S.events.filter(e=>ds.includes(key(e.time))),sl=ds.reduce((x,d)=>x+sleep(d),0);$('stats').innerHTML=`<div class="stat"><b>${mins(sl)}</b><span>sueño</span></div><div class="stat"><b>${es.filter(e=>e.type==='feeding').length}</b><span>leches</span></div><div class="stat"><b>${es.filter(e=>e.type==='diaper').length}</b><span>pañales</span></div>`;$('days').innerHTML=ds.map(d=>{let a=events(d),x=[];if(sleep(d))x.push(mins(sleep(d)));let f=a.filter(e=>e.type==='feeding').length;if(f)x.push(`${f} leche`);return `<button class="row day ${d===pick?'selected':''}" data-day="${d}"><span><b>${d===key()?'Hoy':fmt(date(d))}</b><small>${x.join(' · ')||'Sin registros'}</small></span><small>${a.length} registros ›</small></button>`}).join('');document.querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{pick=b.dataset.day;view('today')})}
-function reminder(e){clearTimeout(timer);if(!S.profile.reminder||!e.target)return;let d=e.target-Date.now();if(d<1e3||d>216e5)return;timer=setTimeout(()=>{let m=`Se acerca la ventana de siesta de ${S.profile.name}`;if('Notification'in window&&Notification.permission==='granted')new Notification('Bichito',{body:m});else toast(m)},d)}let toastTimer;function toast(x){$('toast').textContent=x;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2400)}function view(v){$('today').classList.toggle('hide',v!=='today');$('history').classList.toggle('hide',v!=='history');document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===v));if(v==='today')render()}function fields(){let t=$('type').value;$('feedFields').classList.toggle('show',t==='feeding');$('diaperFields').classList.toggle('show',t==='diaper');$('noteFields').classList.toggle('show',t==='note')}function open(e){edit=e?.id||null;$('recordTitle').textContent=e?'Editar registro':'Añadir registro';$('type').value=e?.type||'sleepStart';$('time').value=input(e?.time||new Date());$('method').value=e?.details?.method||'';$('amount').value=e?.details?.amount||'';$('kind').value=e?.details?.kind||'';$('note').value=e?.note||'';$('remove').classList.toggle('hide',!e);fields();$('record').showModal()}
-$('sleep').onclick=()=>active()?add('sleepEnd'):add('sleepStart');document.querySelectorAll('[data-quick]').forEach(b=>b.onclick=()=>add(b.dataset.quick));$('add').onclick=()=>open();$('type').onchange=fields;$('save').onclick=e=>{e.preventDefault();let x={type:$('type').value,time:new Date($('time').value).toISOString(),details:{method:$('method').value,amount:$('amount').value,kind:$('kind').value},note:$('note').value.trim()};if(edit){let i=S.events.findIndex(e=>e.id===edit);S.events[i]={...S.events[i],...x};save();toast('Registro actualizado')}else add(x.type,x.time,x.details,x.note);$('record').close();render()};$('remove').onclick=()=>{if(confirm('¿Eliminar este registro?')){S.events=S.events.filter(e=>e.id!==edit);save();$('record').close();render()}};$('clear').onclick=()=>{if(confirm('¿Limpiar todos los registros de hoy?')){S.events=S.events.filter(e=>key(e.time)!==key());save();render()}};
-$('settings').onclick=()=>{$('name').value=S.profile.name;$('birth').value=S.profile.birthDate;$('wake').value=S.profile.wakeWindow;$('remind').checked=S.profile.reminder;$('prefs').showModal()};$('closePrefs').onclick=()=>$('prefs').close();$('savePrefs').onclick=async()=>{S.profile={name:$('name').value.trim()||'Bichito',birthDate:$('birth').value,wakeWindow:+$('wake').value,reminder:$('remind').checked};if(S.profile.reminder&&'Notification'in window&&Notification.permission==='default')await Notification.requestPermission();save();$('prefs').close();render();toast('Ajustes guardados')};document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>view(b.dataset.view));$('export').onclick=()=>{let a=document.createElement('a'),u=URL.createObjectURL(new Blob([JSON.stringify({app:'Bichito',data:S},null,2)],{type:'application/json'}));a.href=u;a.download=`bichito-${key()}.json`;a.click();URL.revokeObjectURL(u)};$('import').onclick=()=>$('file').click();$('file').onchange=async e=>{try{let x=JSON.parse(await e.target.files[0].text());if(!x.data?.events)throw 0;if(confirm('Esto reemplazará los datos actuales. ¿Continuar?')){S={events:x.data.events,profile:{...blank.profile,...x.data.profile}};save();render();toast('Copia recuperada')}}catch{toast('No pude leer esa copia')}e.target.value=''};
-$('voice').onclick=()=>{said='';$('heard').textContent='Toca el botón y habla.';$('talk').showModal()};$('closeTalk').onclick=()=>$('talk').close();$('listen').onclick=()=>{let R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return $('heard').textContent='El dictado no está disponible aquí.';let r=new R();r.lang='es-CL';r.interimResults=true;r.onresult=e=>{said=[...e.results].map(x=>x[0].transcript).join(' ');$('heard').textContent=said};r.onerror=()=>$('heard').textContent='No pude escuchar. Revisa el micrófono.';r.start()};$('saveTalk').onclick=()=>{if(!said)return toast('Primero graba una nota');let t=said.toLowerCase();if(t.includes('siesta')&&(t.includes('empez')||t.includes('dorm')))$('sleep').click();else if(t.includes('leche')||t.includes('mam'))add('feeding');else if(t.includes('pañal')||t.includes('panal'))add('diaper');else add('note',new Date().toISOString(),{},said);$('talk').close()};window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();defer=e});$('install').onclick=async()=>{if(defer){defer.prompt();await defer.userChoice;defer=null}else toast(/iPhone|iPad|iPod/.test(navigator.userAgent)?'En Safari: Compartir → Añadir a pantalla de inicio.':'Usa el menú para instalar Bichito.')};if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/service-worker.js'));render();
+const K = "bichito-v2",
+  O = "bichito-data-v1",
+  $ = (x) => document.getElementById(x),
+  blank = {
+    events: [],
+    profile: {
+      name: "Bichito",
+      birthDate: "",
+      wakeWindow: 120,
+      reminder: false,
+    },
+  };
+let S = load(),
+  pick = key(),
+  edit = null,
+  said = "",
+  defer,
+  timer;
+function load() {
+  try {
+    let x = JSON.parse(localStorage.getItem(K) || "null");
+    if (!x) {
+      let o = JSON.parse(localStorage.getItem(O) || "null");
+      x = o && {
+        events: o.events,
+        profile: {
+          name: o.settings?.name || "Bichito",
+          wakeWindow: o.settings?.wakeWindow || 120,
+        },
+      };
+    }
+    return {
+      events: x?.events || [],
+      profile: { ...blank.profile, ...x?.profile },
+    };
+  } catch {
+    return structuredClone(blank);
+  }
+}
+function save() {
+  localStorage.setItem(K, JSON.stringify(S));
+}
+function key(d = new Date()) {
+  d = new Date(d);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function date(k) {
+  return new Date(`${k}T12:00:00`);
+}
+function fmt(d) {
+  return new Intl.DateTimeFormat("es-CL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  })
+    .format(new Date(d))
+    .replace(/^./, (x) => x.toUpperCase());
+}
+function clock(d) {
+  return new Intl.DateTimeFormat("es-CL", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(d));
+}
+function input(d) {
+  d = new Date(d);
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+}
+function id() {
+  return crypto.randomUUID?.() || `${Date.now()}${Math.random()}`;
+}
+function all() {
+  return [...S.events].sort((a, b) => new Date(a.time) - new Date(b.time));
+}
+function events(d = pick) {
+  return S.events
+    .filter((x) => key(x.time) === d)
+    .sort((a, b) => new Date(b.time) - new Date(a.time));
+}
+function esc(s) {
+  let e = document.createElement("i");
+  e.textContent = s;
+  return e.innerHTML;
+}
+const M = {
+  sleepStart: ["Comenzó una siesta", "◐"],
+  sleepEnd: ["Terminó una siesta", "◑"],
+  feeding: ["Tomó leche", "◌"],
+  diaper: ["Cambio de pañal", "◒"],
+  note: ["Nota", "•"],
+};
+function detail(e) {
+  if (e.type === "feeding")
+    return [e.details?.method, e.details?.amount && `${e.details.amount} ml`]
+      .filter(Boolean)
+      .join(" · ");
+  if (e.type === "diaper") return e.details?.kind || "";
+  return e.note || "";
+}
+function add(type, time = new Date().toISOString(), details = {}, note = "") {
+  S.events.push({ id: id(), type, time, details, note });
+  save();
+  render();
+  toast("Registro guardado");
+}
+function active() {
+  let a = null;
+  for (const e of all()) {
+    if (e.type === "sleepStart") a = e;
+    if (e.type === "sleepEnd") a = null;
+  }
+  return a;
+}
+function samples() {
+  let a = all(),
+    v = [];
+  for (let i = 0; i < a.length; i++)
+    if (a[i].type === "sleepEnd") {
+      let n = a.slice(i + 1).find((x) => x.type === "sleepStart");
+      let m = n && (new Date(n.time) - new Date(a[i].time)) / 60000;
+      if (m >= 35 && m <= 360) v.push(m);
+    }
+  return v.slice(-12);
+}
+function model() {
+  let a = samples();
+  if (a.length < 2)
+    return { m: +S.profile.wakeWindow, n: a.length, learn: false };
+  let mid = [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)],
+    v = a.filter((x) => Math.abs(x - mid) < 90),
+    w =
+      v.reduce((s, x, i) => s + x * (i + 1), 0) /
+      v.reduce((s, x, i) => s + i + 1, 0);
+  return { m: Math.round(w / 5) * 5, n: a.length, learn: true };
+}
+function mins(n) {
+  return n >= 60
+    ? `${Math.floor(n / 60)} h${n % 60 ? ` ${n % 60} min` : ""}`
+    : `${n} min`;
+}
+function estimate() {
+  let a = active(),
+    mo = model();
+  if (a)
+    return {
+      t: "Está descansando",
+      c: "La siesta sigue en curso. Cuando despierte, toca Siesta otra vez.",
+      z: "Zzz",
+      d: "78%",
+      n: "Cuando despierte, recalculamos",
+      q: "El ritmo se ajustará con este descanso.",
+      mo,
+    };
+  let last = all()
+    .filter((x) => x.type === "sleepEnd")
+    .at(-1);
+  if (!last)
+    return {
+      t: "Un comienzo tranquilo",
+      c: "Registra siestas completas para que aprendamos su ritmo.",
+      z: "Listo",
+      d: "14%",
+      n: "Aún estamos aprendiendo",
+      q: "Usaremos la ventana inicial mientras reúne datos.",
+      mo,
+    };
+  let target = new Date(+new Date(last.time) + mo.m * 60000),
+    left = Math.round((target - Date.now()) / 60000);
+  return left <= 0
+    ? {
+        t: "Ventana de descanso",
+        c: "Según su ritmo, parece un buen momento para bajar el ritmo.",
+        z: "Ahora",
+        d: "82%",
+        n: "La siesta puede ser ahora",
+        q: "Estimación basada en sus últimos descansos.",
+        mo,
+        target,
+      }
+    : {
+        t: "Tiempo despierto",
+        c: `La próxima ventana se acerca a las ${clock(target)}.`,
+        z: `${left} min`,
+        d: left < 30 ? "70%" : "47%",
+        n: `Próxima siesta: ${clock(target)}`,
+        q: `En aproximadamente ${left} minutos.`,
+        mo,
+        target,
+      };
+}
+function sleep(d) {
+  let s,
+    total = 0;
+  for (const e of events(d).reverse()) {
+    if (e.type === "sleepStart") s = e;
+    if (e.type === "sleepEnd" && s) {
+      total += (+new Date(e.time) - +new Date(s.time)) / 60000;
+      s = null;
+    }
+  }
+  return Math.max(0, Math.round(total));
+}
+function age() {
+  if (!S.profile.birthDate) return "";
+  let n = Math.floor(
+    (Date.now() - new Date(`${S.profile.birthDate}T12:00`)) / 864e5,
+  );
+  return n < 31 ? `${n} días` : `${Math.floor(n / 30.44)} meses`;
+}
+function render() {
+  let e = estimate(),
+    n = S.profile.name || "Bichito",
+    a = active();
+  $("date").textContent = `${fmt(new Date())}${age() ? ` · ${age()}` : ""}`;
+  $("heading").textContent = `El ritmo de ${n}`;
+  $("nowTitle").textContent = e.t;
+  $("nowCopy").textContent = e.c;
+  $("timer").textContent = e.z;
+  $("dot").style.left = e.d;
+  $("nextTitle").textContent = e.n;
+  $("nextCopy").textContent = e.q;
+  $("sleep").classList.toggle("on", !!a);
+  $("learn").textContent = e.mo.learn
+    ? `Aprendiendo de ${e.mo.n} ventanas reales: su promedio actual es ${mins(e.mo.m)} despierto.`
+    : `Faltan ${2 - e.mo.n} ventana${2 - e.mo.n === 1 ? "" : "s"} completa${2 - e.mo.n === 1 ? "" : "s"} para personalizar. Por ahora usamos ${mins(e.mo.m)}.`;
+  list();
+  history();
+  reminder(e);
+}
+function list() {
+  let a = events();
+  $("listTitle").textContent = pick === key() ? "Hoy" : fmt(date(pick));
+  $("clear").classList.toggle("hide", pick !== key());
+  $("list").innerHTML = a.length
+    ? a
+        .map(
+          (e) =>
+            `<article class="row"><span>${M[e.type][1]}</span><button class="main" data-edit="${e.id}"><b>${M[e.type][0]}</b>${detail(e) ? `<small>${esc(detail(e))}</small>` : ""}</button><time>${clock(e.time)}</time><button class="x" data-del="${e.id}">×</button></article>`,
+        )
+        .join("")
+    : '<div class="empty">Todavía no hay registros en este día.</div>';
+  document
+    .querySelectorAll("[data-edit]")
+    .forEach(
+      (b) =>
+        (b.onclick = () => open(S.events.find((e) => e.id === b.dataset.edit))),
+    );
+  document.querySelectorAll("[data-del]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        if (confirm("¿Eliminar este registro?")) {
+          S.events = S.events.filter((e) => e.id !== b.dataset.del);
+          save();
+          render();
+          toast("Registro eliminado");
+        }
+      }),
+  );
+}
+function history() {
+  let ds = Array.from({ length: 7 }, (_, i) => {
+      let d = new Date();
+      d.setDate(d.getDate() - i);
+      return key(d);
+    }),
+    es = S.events.filter((e) => ds.includes(key(e.time))),
+    sl = ds.reduce((x, d) => x + sleep(d), 0);
+  $("stats").innerHTML =
+    `<div class="stat"><b>${mins(sl)}</b><span>sueño</span></div><div class="stat"><b>${es.filter((e) => e.type === "feeding").length}</b><span>leches</span></div><div class="stat"><b>${es.filter((e) => e.type === "diaper").length}</b><span>pañales</span></div>`;
+  $("days").innerHTML = ds
+    .map((d) => {
+      let a = events(d),
+        x = [];
+      if (sleep(d)) x.push(mins(sleep(d)));
+      let f = a.filter((e) => e.type === "feeding").length;
+      if (f) x.push(`${f} leche`);
+      return `<button class="row day ${d === pick ? "selected" : ""}" data-day="${d}"><span><b>${d === key() ? "Hoy" : fmt(date(d))}</b><small>${x.join(" · ") || "Sin registros"}</small></span><small>${a.length} registros ›</small></button>`;
+    })
+    .join("");
+  document.querySelectorAll("[data-day]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        pick = b.dataset.day;
+        view("today");
+      }),
+  );
+}
+function reminder(e) {
+  clearTimeout(timer);
+  if (!S.profile.reminder || !e.target) return;
+  let d = e.target - Date.now();
+  if (d < 1e3 || d > 216e5) return;
+  timer = setTimeout(() => {
+    let m = `Se acerca la ventana de siesta de ${S.profile.name}`;
+    if ("Notification" in window && Notification.permission === "granted")
+      new Notification("Bichito", { body: m });
+    else toast(m);
+  }, d);
+}
+let toastTimer;
+function toast(x) {
+  $("toast").textContent = x;
+  $("toast").classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $("toast").classList.remove("show"), 2400);
+}
+function view(v) {
+  $("today").classList.toggle("hide", v !== "today");
+  $("history").classList.toggle("hide", v !== "history");
+  document
+    .querySelectorAll("[data-view]")
+    .forEach((b) => b.classList.toggle("active", b.dataset.view === v));
+  if (v === "today") render();
+}
+function fields() {
+  let t = $("type").value;
+  $("feedFields").classList.toggle("show", t === "feeding");
+  $("diaperFields").classList.toggle("show", t === "diaper");
+  $("noteFields").classList.toggle("show", t === "note");
+}
+function open(e) {
+  edit = e?.id || null;
+  $("recordTitle").textContent = e ? "Editar registro" : "Añadir registro";
+  $("type").value = e?.type || "sleepStart";
+  $("time").value = input(e?.time || new Date());
+  $("method").value = e?.details?.method || "";
+  $("amount").value = e?.details?.amount || "";
+  $("kind").value = e?.details?.kind || "";
+  $("note").value = e?.note || "";
+  $("remove").classList.toggle("hide", !e);
+  fields();
+  $("record").showModal();
+}
+$("sleep").onclick = () => (active() ? add("sleepEnd") : add("sleepStart"));
+document
+  .querySelectorAll("[data-quick]")
+  .forEach((b) => (b.onclick = () => add(b.dataset.quick)));
+$("add").onclick = () => open();
+$("type").onchange = fields;
+$("save").onclick = (e) => {
+  e.preventDefault();
+  let x = {
+    type: $("type").value,
+    time: new Date($("time").value).toISOString(),
+    details: {
+      method: $("method").value,
+      amount: $("amount").value,
+      kind: $("kind").value,
+    },
+    note: $("note").value.trim(),
+  };
+  if (edit) {
+    let i = S.events.findIndex((e) => e.id === edit);
+    S.events[i] = { ...S.events[i], ...x };
+    save();
+    toast("Registro actualizado");
+  } else add(x.type, x.time, x.details, x.note);
+  $("record").close();
+  render();
+};
+$("remove").onclick = () => {
+  if (confirm("¿Eliminar este registro?")) {
+    S.events = S.events.filter((e) => e.id !== edit);
+    save();
+    $("record").close();
+    render();
+  }
+};
+$("clear").onclick = () => {
+  if (confirm("¿Limpiar todos los registros de hoy?")) {
+    S.events = S.events.filter((e) => key(e.time) !== key());
+    save();
+    render();
+  }
+};
+$("settings").onclick = () => {
+  $("name").value = S.profile.name;
+  $("birth").value = S.profile.birthDate;
+  $("wake").value = S.profile.wakeWindow;
+  $("remind").checked = S.profile.reminder;
+  $("prefs").showModal();
+};
+$("closePrefs").onclick = () => $("prefs").close();
+$("savePrefs").onclick = async () => {
+  S.profile = {
+    name: $("name").value.trim() || "Bichito",
+    birthDate: $("birth").value,
+    wakeWindow: +$("wake").value,
+    reminder: $("remind").checked,
+  };
+  if (
+    S.profile.reminder &&
+    "Notification" in window &&
+    Notification.permission === "default"
+  )
+    await Notification.requestPermission();
+  save();
+  $("prefs").close();
+  render();
+  toast("Ajustes guardados");
+};
+document
+  .querySelectorAll("[data-view]")
+  .forEach((b) => (b.onclick = () => view(b.dataset.view)));
+$("export").onclick = () => {
+  let a = document.createElement("a"),
+    u = URL.createObjectURL(
+      new Blob([JSON.stringify({ app: "Bichito", data: S }, null, 2)], {
+        type: "application/json",
+      }),
+    );
+  a.href = u;
+  a.download = `bichito-${key()}.json`;
+  a.click();
+  URL.revokeObjectURL(u);
+};
+$("import").onclick = () => $("file").click();
+$("file").onchange = async (e) => {
+  try {
+    let x = JSON.parse(await e.target.files[0].text());
+    if (!x.data?.events) throw 0;
+    if (confirm("Esto reemplazará los datos actuales. ¿Continuar?")) {
+      S = {
+        events: x.data.events,
+        profile: { ...blank.profile, ...x.data.profile },
+      };
+      save();
+      render();
+      toast("Copia recuperada");
+    }
+  } catch {
+    toast("No pude leer esa copia");
+  }
+  e.target.value = "";
+};
+$("voice").onclick = () => {
+  said = "";
+  $("heard").textContent = "Toca el botón y habla.";
+  $("voiceText").value = "";
+  $("talk").showModal();
+};
+$("closeTalk").onclick = () => $("talk").close();
+$("listen").onclick = () => {
+  let R = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!R) {
+    $("heard").textContent = "El dictado no está disponible aquí. Puedes escribir la nota abajo.";
+    return;
+  }
+  let r = new R();
+  r.lang = "es-CL";
+  r.interimResults = true;
+  r.onstart = () => {
+    $("heard").textContent = "Escuchando…";
+    $("listen").textContent = "Escuchando…";
+  };
+  r.onresult = (e) => {
+    said = [...e.results].map((x) => x[0].transcript).join(" ");
+    $("heard").textContent = said;
+    $("voiceText").value = said;
+  };
+  r.onerror = () =>
+    ($("heard").textContent = "No pude escuchar. Puedes escribir la nota abajo.");
+  r.onend = () => ($("listen").textContent = "Escuchar otra vez");
+  r.start();
+};
+$("saveTalk").onclick = () => {
+  const text = (said || $("voiceText").value).trim();
+  if (!text) {
+    $("heard").textContent = "Escribe una nota o vuelve a tocar “Empezar a escuchar”.";
+    return;
+  }
+  let t = text.toLowerCase();
+  if (t.includes("siesta") && (t.includes("empez") || t.includes("dorm")))
+    $("sleep").click();
+  else if (t.includes("leche") || t.includes("mam")) add("feeding");
+  else if (t.includes("pañal") || t.includes("panal")) add("diaper");
+  else add("note", new Date().toISOString(), {}, text);
+  $("talk").close();
+};
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  defer = e;
+});
+$("install").onclick = async () => {
+  if (defer) {
+    defer.prompt();
+    await defer.userChoice;
+    defer = null;
+  } else
+    toast(
+      /iPhone|iPad|iPod/.test(navigator.userAgent)
+        ? "En Safari: Compartir → Añadir a pantalla de inicio."
+        : "Usa el menú para instalar Bichito.",
+    );
+};
+if ("serviceWorker" in navigator)
+  window.addEventListener("load", () =>
+    navigator.serviceWorker.register("/service-worker.js"),
+  );
+render();
