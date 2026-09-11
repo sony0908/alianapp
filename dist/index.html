@@ -273,6 +273,23 @@
         text-decoration: line-through;
         text-decoration-color: #d6a48b;
       }
+      .ai-result {
+        margin-top: 12px;
+        padding: 13px;
+        border-radius: 15px;
+        background: #f5fafc;
+        color: #38566a;
+        font: 0.84rem/1.5 ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+        white-space: pre-wrap;
+      }
+      .ai-result:empty {
+        display: none;
+      }
+      .ai-status {
+        margin-top: 9px;
+        color: var(--m);
+        font-size: 0.8rem;
+      }
       .timeline {
         display: grid;
         gap: 9px;
@@ -666,6 +683,6 @@
     </dialog>
     <div class="toast" id="toast"></div>
   <script src="/app.js?v=20260911-1830"></script>
-  <script src="/family.js?v=20260911-1800"></script>
+  <script src="/family.js?v=20260911-1900"></script>
   </body>
 </html>

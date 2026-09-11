@@ -5,6 +5,8 @@
   let data;
   try { data = { ...empty, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { data = structuredClone(empty); }
   const save = () => localStorage.setItem(KEY, JSON.stringify(data));
+  const AI_KEY = 'bichito-ai-guidance-v1';
+  let guidance = localStorage.getItem(AI_KEY) || '';
   const uid = () => crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
   const esc = (text = '') => { const node = document.createElement('i'); node.textContent = text; return node.innerHTML; };
   const dateLabel = (value) => value ? new Intl.DateTimeFormat('es-CL', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${value}T12:00:00`)) : 'Sin fecha';
@@ -48,7 +50,30 @@
     const low = data.stock.filter((item) => Number(item.quantity) <= Number(item.minimum));
     const expiring = data.stock.filter((item) => item.expiry && new Date(`${item.expiry}T23:59:59`) - Date.now() < 2592000000 && new Date(`${item.expiry}T23:59:59`) > Date.now());
     const stage = months === null ? 'Añade la fecha de nacimiento en Ajustes para activar la planificación por etapa.' : months < 4 ? 'En los próximos dos meses: revisa la siguiente talla de ropa, pañales y un espacio seguro para el movimiento.' : months < 10 ? 'En los próximos dos meses: revisa la siguiente talla, alimentación indicada por su pediatra y seguridad del espacio de exploración.' : 'En los próximos dos meses: revisa tallas, comida, movilidad segura y los productos que más consume.';
-    return `<article class="family-card"><h2>Planificar con anticipación</h2><div class="family-flag">${stage}</div>${low.length ? `<div class="family-flag family-warning"><b>Compra o revisa pronto:</b><br>${low.map((item) => esc(item.name)).join(', ')}.</div>` : '<div class="family-flag">Aún no hay alertas de stock. Define cantidades mínimas para recibir avisos.</div>'}${expiring.length ? `<div class="family-flag family-warning"><b>Vencimiento próximo:</b><br>${expiring.map((item) => esc(item.name)).join(', ')}.</div>` : ''}<p class="family-form-note">Los avisos son para organizar presupuesto y compras; tú decides qué necesita realmente tu familia.</p></article><article class="family-card"><h2>IA y lecturas</h2><p>Cuando conectemos Gemini de forma protegida, podrá resumir tus propios registros y ayudarte a preparar preguntas para controles. No entregará diagnósticos ni reemplazará indicaciones médicas.</p></article>`;
+    return `<article class="family-card"><h2>Planificar con anticipación</h2><div class="family-flag">${stage}</div>${low.length ? `<div class="family-flag family-warning"><b>Compra o revisa pronto:</b><br>${low.map((item) => esc(item.name)).join(', ')}.</div>` : '<div class="family-flag">Aún no hay alertas de stock. Define cantidades mínimas para recibir avisos.</div>'}${expiring.length ? `<div class="family-flag family-warning"><b>Vencimiento próximo:</b><br>${expiring.map((item) => esc(item.name)).join(', ')}.</div>` : ''}<p class="family-form-note">Los avisos son para organizar presupuesto y compras; tú decides qué necesita realmente tu familia.</p></article><article class="family-card"><h2>Aprendizaje por etapa</h2><p>Prepara ideas generales de lecturas, juegos, seguridad y compras para los próximos dos meses. También incluye una guía prudente para revisar el llanto por descarte.</p><button class="primary family-add" id="aiGuidance">Preparar recomendaciones con IA</button><div class="ai-status" id="aiStatus">Se envían solo la edad, avances y categorías de stock; no se envían notas de salud ni el nombre.</div><div class="ai-result" id="aiResult"></div></article>`;
+  }
+  function guidanceContext() {
+    return {
+      ageMonths: ageMonths(),
+      milestones: data.milestones.slice(-8).map((item) => String(item.title || '').slice(0, 80)),
+      stock: data.stock.slice(-12).map((item) => ({ category: String(item.category || '').slice(0, 40), name: String(item.name || '').slice(0, 60), quantity: Number(item.quantity) || 0, minimum: Number(item.minimum) || 0 })),
+    };
+  }
+  async function requestGuidance() {
+    const button = $('aiGuidance');
+    const status = $('aiStatus');
+    button.disabled = true; button.textContent = 'Preparando…'; status.textContent = 'Creando recomendaciones generales…';
+    try {
+      const response = await fetch('/api/bichito-guidance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(guidanceContext()) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'No se pudieron preparar las recomendaciones.');
+      guidance = result.text;
+      localStorage.setItem(AI_KEY, guidance);
+      render();
+    } catch (error) {
+      button.disabled = false; button.textContent = 'Intentar nuevamente';
+      status.textContent = error.message || 'No se pudo conectar con la IA.';
+    }
   }
   function render() {
     const content = $('familyContent'); if (!content) return;
@@ -56,6 +81,8 @@
     document.querySelectorAll('[data-family]').forEach((button) => { button.classList.toggle('active', button.dataset.family === mode); button.onclick = () => { mode = button.dataset.family; render(); }; });
     document.querySelectorAll('[data-add]').forEach((button) => button.onclick = () => openForm(button.dataset.add));
     document.querySelectorAll('[data-remove]').forEach((button) => { button.onclick = () => { const [kind, id] = button.dataset.remove.split(':'); if (confirm('¿Eliminar este registro?')) remove(kind, id); }; });
+    const aiButton = $('aiGuidance');
+    if (aiButton) { $('aiResult').textContent = guidance; aiButton.onclick = requestGuidance; }
   }
   function field(label, id, type = 'text', extra = '') { return `<label class="field">${label}<input id="f_${id}" type="${type}" ${extra}></label>`; }
   function openForm(kind) {
