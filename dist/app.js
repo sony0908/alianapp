@@ -332,10 +332,16 @@ function open(e) {
   fields();
   $("record").showModal();
 }
-$("sleep").onclick = () => (active() ? add("sleepEnd") : add("sleepStart"));
-document
-  .querySelectorAll("[data-quick]")
-  .forEach((b) => (b.onclick = () => add(b.dataset.quick)));
+$("sleep").onclick = () => open({
+  type: active() ? "sleepEnd" : "sleepStart",
+  time: new Date().toISOString(),
+});
+document.querySelectorAll("[data-quick]").forEach((button) => {
+  button.onclick = () => open({
+    type: button.dataset.quick,
+    time: new Date().toISOString(),
+  });
+});
 $("add").onclick = () => open();
 $("type").onchange = fields;
 $("save").onclick = (e) => {
@@ -472,7 +478,7 @@ $("saveTalk").onclick = () => {
   }
   let t = text.toLowerCase();
   if (t.includes("siesta") && (t.includes("empez") || t.includes("dorm")))
-    $("sleep").click();
+    active() ? add("sleepEnd") : add("sleepStart");
   else if (t.includes("leche") || t.includes("mam")) add("feeding");
   else if (t.includes("pañal") || t.includes("panal")) add("diaper");
   else add("note", new Date().toISOString(), {}, text);
