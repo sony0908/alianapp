@@ -3,6 +3,7 @@ const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_-dDAZOUN8dsZF6qR9jt1sQ_ZrB8hYu3
 const FAMILY_TABLE = "bichito_families";
 const DATA_TABLE = "bichito_family_data";
 const META_KEY = "bichito-cloud-v1";
+const PENDING_EMAIL_KEY = "bichito-cloud-pending-email";
 const SYNCED_KEYS = ["bichito-v2", "bichito-family-v1", "bichito-ai-guidance-v1"];
 
 const escapeHtml = (value = "") => {
@@ -27,7 +28,7 @@ const payload = () => ({
 
 const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
 });
 
 let session = null;
@@ -143,19 +144,43 @@ async function createFamily() {
   await pushRemote(true);
 }
 
-async function sendMagicLink() {
+async function sendLoginCode() {
   const input = document.getElementById("cloudEmail");
   const email = input?.value.trim();
   if (!email || !email.includes("@")) {
     setStatus("Escribe un correo válido.");
     return;
   }
-  setStatus("Enviando enlace de acceso…");
+  setStatus("Enviando código de acceso…");
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: `${location.origin}/` },
   });
-  setStatus(error ? "No se pudo enviar el enlace. Revisa el correo autorizado en Supabase." : "Revisa tu correo y abre el enlace en este dispositivo.");
+  if (error) {
+    setStatus("No se pudo enviar el código. Revisa que ese correo esté autorizado en Supabase.");
+    return;
+  }
+  localStorage.setItem(PENDING_EMAIL_KEY, email.toLowerCase());
+  setStatus("Revisa tu correo e ingresa aquí el código de seis dígitos.");
+}
+
+async function verifyLoginCode() {
+  const email = document.getElementById("cloudEmail")?.value.trim();
+  const token = document.getElementById("cloudCode")?.value.replace(/\s/g, "");
+  if (!email || !token || !/^\d{6}$/.test(token)) {
+    setStatus("Escribe el correo y los seis dígitos que recibiste.");
+    return;
+  }
+  setStatus("Verificando código…");
+  const { data, error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+  if (error || !data.session) {
+    setStatus("El código no es válido o venció. Solicita uno nuevo.");
+    return;
+  }
+  localStorage.removeItem(PENDING_EMAIL_KEY);
+  session = data.session;
+  family = await findFamily();
+  setStatus(family ? "Nube familiar conectada." : "Sesión iniciada. Crea o encuentra tu nube familiar.");
+  renderDialog();
 }
 
 async function signOut() {
@@ -168,7 +193,8 @@ async function signOut() {
 function renderDialog() {
   const close = '<button class="x" id="closeCloud" aria-label="Cerrar">×</button>';
   if (!session) {
-    dialog.innerHTML = `<form method="dialog" class="sheet"><div class="head"><h2>Nube familiar</h2>${close}</div><p class="note">Entra con un enlace enviado a tu correo. Solo tú y la otra persona invitada podrán acceder a los datos.</p><label class="field">Correo<input id="cloudEmail" type="email" inputmode="email" autocomplete="email" placeholder="tu@correo.com"></label><button class="primary" type="button" id="sendMagic">Enviar enlace de acceso</button><p class="note" id="cloudStatus"></p></form>`;
+    const pendingEmail = localStorage.getItem(PENDING_EMAIL_KEY) || "";
+    dialog.innerHTML = `<form method="dialog" class="sheet"><div class="head"><h2>Nube familiar</h2>${close}</div><p class="note">Recibe un código en tu correo e ingrésalo aquí. Así funciona también desde Bichito instalada en el iPhone.</p><label class="field">Correo<input id="cloudEmail" type="email" inputmode="email" autocomplete="email" value="${escapeHtml(pendingEmail)}" placeholder="tu@correo.com"></label><label class="field">Código de seis dígitos<input id="cloudCode" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="123456"></label><button class="primary" type="button" id="verifyCode">Ingresar con código</button><button class="secondary" type="button" id="sendCode">Enviar o reenviar código</button><p class="note" id="cloudStatus"></p></form>`;
   } else if (!family) {
     dialog.innerHTML = `<form method="dialog" class="sheet"><div class="head"><h2>Crear nube familiar</h2>${close}</div><p class="note">Conectado como ${escapeHtml(session.user.email || "")}. Al crearla, se subirán los registros que ya existen en este dispositivo.</p><label class="field">Correo de la otra persona<input id="cloudPartner" type="email" inputmode="email" autocomplete="email" placeholder="mama@correo.com"></label><button class="primary" type="button" id="createCloud">Crear y sincronizar</button><p class="note" id="cloudStatus"></p></form>`;
   } else {
@@ -177,7 +203,8 @@ function renderDialog() {
   }
   document.getElementById("cloudStatus").textContent = statusText;
   document.getElementById("closeCloud").onclick = () => dialog.close();
-  document.getElementById("sendMagic")?.addEventListener("click", sendMagicLink);
+  document.getElementById("sendCode")?.addEventListener("click", sendLoginCode);
+  document.getElementById("verifyCode")?.addEventListener("click", verifyLoginCode);
   document.getElementById("createCloud")?.addEventListener("click", createFamily);
   document.getElementById("pullCloud")?.addEventListener("click", downloadRemote);
   document.getElementById("pushCloud")?.addEventListener("click", () => pushRemote(true));
