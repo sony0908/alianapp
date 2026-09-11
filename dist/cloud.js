@@ -1,10 +1,6 @@
-const SUPABASE_URL = "https://rpzvrqmdfyrkuvzrnndt.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_-dDAZOUN8dsZF6qR9jt1sQ_ZrB8hYu3";
-const FAMILY_TABLE = "bichito_families";
-const DATA_TABLE = "bichito_family_data";
-const META_KEY = "bichito-cloud-v1";
-const PENDING_EMAIL_KEY = "bichito-cloud-pending-email";
+const META_KEY = "bichito-vault-v2";
 const SYNCED_KEYS = ["bichito-v2", "bichito-family-v1", "bichito-ai-guidance-v1"];
+const VAULT_API = "/api/family-vault";
 
 const escapeHtml = (value = "") => {
   const node = document.createElement("i");
@@ -12,13 +8,9 @@ const escapeHtml = (value = "") => {
   return node.innerHTML;
 };
 const readJson = (key, fallback) => {
-  try {
-    return JSON.parse(localStorage.getItem(key) || "null") || fallback;
-  } catch {
-    return fallback;
-  }
+  try { return JSON.parse(localStorage.getItem(key) || "null") || fallback; } catch { return fallback; }
 };
-const readMeta = () => readJson(META_KEY, {});
+const readMeta = () => readJson(META_KEY, null);
 const writeMeta = (value) => localStorage.setItem(META_KEY, JSON.stringify(value));
 const payload = () => ({
   routines: readJson("bichito-v2", {}),
@@ -26,189 +18,202 @@ const payload = () => ({
   guidance: localStorage.getItem("bichito-ai-guidance-v1") || "",
 });
 
-const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
-const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
-});
-
-let session = null;
-let family = null;
+let pairing = readMeta();
 let applyingRemote = false;
 let syncTimer = null;
-let statusText = "Inicia sesión para activar la nube familiar.";
+let statusText = pairing ? "Nube privada conectada." : "Crea o escanea el QR de su familia para activar la nube.";
 const cloudButton = document.getElementById("cloud");
 const dialog = document.createElement("dialog");
 dialog.id = "cloudDialog";
 document.body.append(dialog);
 
+function isPairing(value) {
+  return value && value.vaultId === "bichito-family" && /^[A-Za-z0-9_-]{40,}$/.test(value.token || "");
+}
+
+function bytesToBase64Url(bytes) {
+  let binary = "";
+  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function base64UrlToBytes(value) {
+  const source = String(value || "").replace(/-/g, "+").replace(/_/g, "/");
+  const binary = atob(source + "=".repeat((4 - (source.length % 4)) % 4));
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+async function vaultKey() {
+  if (!isPairing(pairing)) throw new Error("UNPAIRED");
+  return crypto.subtle.importKey("raw", base64UrlToBytes(pairing.token), "AES-GCM", false, ["encrypt", "decrypt"]);
+}
+
+async function encryptPayload(value) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await vaultKey(), new TextEncoder().encode(JSON.stringify(value)));
+  return { ciphertext: bytesToBase64Url(new Uint8Array(encrypted)), iv: bytesToBase64Url(iv) };
+}
+
+async function decryptPayload(ciphertext, iv) {
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: base64UrlToBytes(iv) },
+    await vaultKey(),
+    base64UrlToBytes(ciphertext),
+  );
+  return JSON.parse(new TextDecoder().decode(decrypted));
+}
+
+async function api(path = "", options = {}) {
+  const response = await fetch(`${VAULT_API}${path}`, {
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+    ...options,
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || "No se pudo conectar con la nube privada.");
+  return result;
+}
+
 function setStatus(text) {
   statusText = text;
-  cloudButton.classList.toggle("cloud-ready", Boolean(family));
-  cloudButton.title = family ? "Nube familiar conectada" : "Nube familiar";
+  cloudButton.classList.toggle("cloud-ready", isPairing(pairing));
+  cloudButton.title = isPairing(pairing) ? "Nube privada conectada" : "Nube familiar";
   if (dialog.open) renderDialog();
 }
 
-async function findFamily() {
-  const { data, error } = await supabase
-    .from(FAMILY_TABLE)
-    .select("id, member_emails, owner_id")
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (error) {
-    setStatus("La nube aún no está preparada. Ejecuta el archivo SQL de Bichito en Supabase.");
-    return null;
-  }
-  return data;
+function pairingUrl() {
+  return `${location.origin}/?bichito-vault=${encodeURIComponent(pairing.vaultId)}#bichito-token=${encodeURIComponent(pairing.token)}`;
 }
 
-async function readRemote() {
-  if (!family) return null;
-  const { data, error } = await supabase
-    .from(DATA_TABLE)
-    .select("payload, updated_at")
-    .eq("family_id", family.id)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+async function renderQr() {
+  const target = document.getElementById("familyQr");
+  if (!target || !isPairing(pairing)) return;
+  target.textContent = "Preparando el QR…";
+  try {
+    const { toDataURL } = await import("https://cdn.jsdelivr.net/npm/qrcode@1.5.4/+esm");
+    const dataUrl = await toDataURL(pairingUrl(), { width: 280, margin: 2, color: { dark: "#26313b", light: "#fffdfb" } });
+    target.innerHTML = `<img src="${dataUrl}" alt="Código QR para emparejar Bichito"><p class="note">Escanéalo con el otro teléfono. Desde la página que se abre, agrega Bichito a la pantalla de inicio.</p>`;
+  } catch {
+    target.innerHTML = `<p class="note">No pudimos dibujar el QR. Abre este vínculo solo en el otro teléfono:</p><p class="note break">${escapeHtml(pairingUrl())}</p>`;
+  }
 }
 
 async function pushRemote(showFeedback = true) {
-  if (!family || !session || applyingRemote) return;
-  if (showFeedback) setStatus("Guardando en la nube…");
-  const { error } = await supabase.from(DATA_TABLE).upsert(
-    {
-      family_id: family.id,
-      payload: payload(),
-      updated_at: new Date().toISOString(),
-      updated_by: session.user.id,
-    },
-    { onConflict: "family_id" },
-  );
-  if (error) {
-    setStatus("No se pudo guardar. Revisa la conexión e inténtalo nuevamente.");
-    return;
+  if (!isPairing(pairing) || applyingRemote) return;
+  try {
+    if (showFeedback) setStatus("Cifrando y guardando en la nube…");
+    const encrypted = await encryptPayload(payload());
+    const saved = await api("", { method: "POST", body: JSON.stringify({ action: "write", ...encrypted }) });
+    writeMeta({ ...pairing, syncedAt: saved.updatedAt || new Date().toISOString() });
+    setStatus("Datos familiares cifrados y sincronizados.");
+  } catch (error) {
+    setStatus(error.message || "No se pudo guardar. Revisa la conexión e inténtalo nuevamente.");
   }
-  writeMeta({ familyId: family.id, syncedAt: new Date().toISOString() });
-  setStatus("Datos familiares sincronizados.");
 }
 
 function schedulePush() {
-  if (!family || applyingRemote) return;
+  if (!isPairing(pairing) || applyingRemote) return;
   clearTimeout(syncTimer);
-  syncTimer = setTimeout(() => pushRemote(false), 1300);
+  syncTimer = setTimeout(() => pushRemote(false), 1400);
 }
 
-async function downloadRemote() {
+async function downloadRemote(reloadAfter = true) {
   try {
-    setStatus("Descargando datos de la nube…");
-    const remote = await readRemote();
-    if (!remote?.payload) {
-      setStatus("Todavía no hay datos guardados en la nube.");
-      return;
+    setStatus("Descargando datos cifrados…");
+    const remote = await api();
+    if (!remote.ciphertext) {
+      setStatus("La nube está lista; aún no tiene registros guardados.");
+      return false;
     }
+    const remotePayload = await decryptPayload(remote.ciphertext, remote.iv);
     applyingRemote = true;
-    localStorage.setItem("bichito-v2", JSON.stringify(remote.payload.routines || {}));
-    localStorage.setItem("bichito-family-v1", JSON.stringify(remote.payload.family || {}));
-    localStorage.setItem("bichito-ai-guidance-v1", remote.payload.guidance || "");
-    writeMeta({ familyId: family.id, syncedAt: remote.updated_at || new Date().toISOString() });
-    setStatus("Datos descargados. Actualizando Bichito…");
-    setTimeout(() => location.reload(), 450);
-  } catch {
-    setStatus("No se pudieron descargar los datos. Intenta nuevamente.");
+    localStorage.setItem("bichito-v2", JSON.stringify(remotePayload.routines || {}));
+    localStorage.setItem("bichito-family-v1", JSON.stringify(remotePayload.family || {}));
+    localStorage.setItem("bichito-ai-guidance-v1", remotePayload.guidance || "");
+    writeMeta({ ...pairing, syncedAt: remote.updatedAt || new Date().toISOString() });
+    setStatus("Datos familiares descargados. Actualizando Bichito…");
+    if (reloadAfter) setTimeout(() => location.reload(), 400);
+    return true;
+  } catch (error) {
+    setStatus(error.message === "UNPAIRED" ? "Este teléfono aún no está emparejado." : "No se pudieron abrir los datos cifrados.");
+    return false;
   } finally {
     applyingRemote = false;
   }
 }
 
-async function createFamily() {
-  const input = document.getElementById("cloudPartner");
-  const partnerEmail = input?.value.trim().toLowerCase();
-  const ownEmail = session?.user?.email?.trim().toLowerCase();
-  if (!partnerEmail || !partnerEmail.includes("@")) {
-    setStatus("Escribe el correo de la otra persona que usará Bichito.");
-    return;
+async function createVault() {
+  try {
+    setStatus("Creando la bóveda privada de Bichito…");
+    const created = await api("", { method: "POST", body: JSON.stringify({ action: "create" }) });
+    pairing = { vaultId: created.vaultId, token: created.token };
+    writeMeta(pairing);
+    await pushRemote(false);
+    setStatus("Nube privada lista. Guarda este QR para emparejar el otro teléfono.");
+    renderDialog();
+    await renderQr();
+  } catch (error) {
+    setStatus(error.message || "No se pudo crear la nube privada.");
   }
-  setStatus("Creando su nube familiar…");
-  const memberEmails = [...new Set([ownEmail, partnerEmail])];
-  const { data, error } = await supabase
-    .from(FAMILY_TABLE)
-    .insert({ owner_id: session.user.id, member_emails: memberEmails })
-    .select("id, member_emails, owner_id")
-    .single();
-  if (error) {
-    setStatus("No se pudo crear la familia. Revisa que el SQL de Supabase esté ejecutado.");
-    return;
-  }
-  family = data;
-  await pushRemote(true);
 }
 
-async function sendLoginCode() {
-  const input = document.getElementById("cloudEmail");
-  const email = input?.value.trim();
-  if (!email || !email.includes("@")) {
-    setStatus("Escribe un correo válido.");
-    return;
+async function claimPairingFromUrl() {
+  const url = new URL(location.href);
+  const vaultId = url.searchParams.get("bichito-vault");
+  const token = new URLSearchParams(url.hash.slice(1)).get("bichito-token");
+  if (!vaultId || !token) return false;
+  try {
+    setStatus("Emparejando este teléfono…");
+    const claimed = await api("", { method: "POST", body: JSON.stringify({ action: "pair", vaultId, token }) });
+    pairing = { vaultId: claimed.vaultId, token: claimed.token };
+    writeMeta(pairing);
+    history.replaceState({}, document.title, location.pathname);
+    await downloadRemote(true);
+    return true;
+  } catch (error) {
+    history.replaceState({}, document.title, location.pathname);
+    setStatus(error.message || "No se pudo usar este QR.");
+    return false;
   }
-  setStatus("Enviando código de acceso…");
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-  });
-  if (error) {
-    setStatus("No se pudo enviar el código. Revisa que ese correo esté autorizado en Supabase.");
-    return;
-  }
-  localStorage.setItem(PENDING_EMAIL_KEY, email.toLowerCase());
-  setStatus("Revisa tu correo e ingresa aquí el código de seis dígitos.");
 }
 
-async function verifyLoginCode() {
-  const email = document.getElementById("cloudEmail")?.value.trim();
-  const token = document.getElementById("cloudCode")?.value.replace(/\s/g, "");
-  if (!email || !token || !/^\d{6}$/.test(token)) {
-    setStatus("Escribe el correo y los seis dígitos que recibiste.");
-    return;
+async function restorePairingFromCookie() {
+  if (isPairing(pairing)) return true;
+  try {
+    const session = await api("?action=session");
+    pairing = { vaultId: session.vaultId, token: session.token };
+    writeMeta(pairing);
+    setStatus("Este teléfono quedó emparejado con la nube familiar.");
+    await downloadRemote(true);
+    return true;
+  } catch {
+    return false;
   }
-  setStatus("Verificando código…");
-  const { data, error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
-  if (error || !data.session) {
-    setStatus("El código no es válido o venció. Solicita uno nuevo.");
-    return;
-  }
-  localStorage.removeItem(PENDING_EMAIL_KEY);
-  session = data.session;
-  family = await findFamily();
-  setStatus(family ? "Nube familiar conectada." : "Sesión iniciada. Crea o encuentra tu nube familiar.");
-  renderDialog();
 }
 
-async function signOut() {
-  await supabase.auth.signOut();
-  session = null;
-  family = null;
-  setStatus("Sesión cerrada. Los datos locales se mantienen en este dispositivo.");
+async function sharePairing() {
+  if (!navigator.share || !isPairing(pairing)) return;
+  try { await navigator.share({ title: "Bichito", text: "Empareja Bichito en este teléfono.", url: pairingUrl() }); } catch { /* el usuario canceló */ }
 }
 
 function renderDialog() {
   const close = '<button class="x" id="closeCloud" aria-label="Cerrar">×</button>';
-  if (!session) {
-    const pendingEmail = localStorage.getItem(PENDING_EMAIL_KEY) || "";
-    dialog.innerHTML = `<form method="dialog" class="sheet"><div class="head"><h2>Nube familiar</h2>${close}</div><p class="note">Recibe un código en tu correo e ingrésalo aquí. Así funciona también desde Bichito instalada en el iPhone.</p><label class="field">Correo<input id="cloudEmail" type="email" inputmode="email" autocomplete="email" value="${escapeHtml(pendingEmail)}" placeholder="tu@correo.com"></label><label class="field">Código de seis dígitos<input id="cloudCode" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="123456"></label><button class="primary" type="button" id="verifyCode">Ingresar con código</button><button class="secondary" type="button" id="sendCode">Enviar o reenviar código</button><p class="note" id="cloudStatus"></p></form>`;
-  } else if (!family) {
-    dialog.innerHTML = `<form method="dialog" class="sheet"><div class="head"><h2>Crear nube familiar</h2>${close}</div><p class="note">Conectado como ${escapeHtml(session.user.email || "")}. Al crearla, se subirán los registros que ya existen en este dispositivo.</p><label class="field">Correo de la otra persona<input id="cloudPartner" type="email" inputmode="email" autocomplete="email" placeholder="mama@correo.com"></label><button class="primary" type="button" id="createCloud">Crear y sincronizar</button><p class="note" id="cloudStatus"></p></form>`;
+  if (!isPairing(pairing)) {
+    dialog.innerHTML = `<form method="dialog" class="sheet"><div class="head"><h2>Nube familiar</h2>${close}</div><p class="note">No usa correo ni contraseña. Bichito cifra los datos antes de guardarlos; el QR es la llave privada de su familia.</p><button class="primary" type="button" id="createVault">Crear QR de familia</button><p class="note">Hazlo una sola vez desde tu teléfono. Luego escanéalo con el de la mamá.</p><p class="note" id="cloudStatus"></p></form>`;
   } else {
-    const isNewDevice = readMeta().familyId !== family.id;
-    dialog.innerHTML = `<form method="dialog" class="sheet"><div class="head"><h2>Nube familiar</h2>${close}</div><p class="note">Conectado como ${escapeHtml(session.user.email || "")}. ${isNewDevice ? "Encontramos los datos de su familia en la nube." : "Los cambios nuevos se guardan automáticamente."}</p><button class="secondary" type="button" id="pullCloud">${isNewDevice ? "Usar datos de la nube en este dispositivo" : "Actualizar desde la nube"}</button><button class="primary" type="button" id="pushCloud">Guardar ahora en la nube</button><button class="link" type="button" id="signOutCloud">Cerrar sesión</button><p class="note" id="cloudStatus"></p></form>`;
+    dialog.innerHTML = `<form method="dialog" class="sheet"><div class="head"><h2>Nube privada</h2>${close}</div><p class="note">Este teléfono está emparejado. Los cambios se cifran aquí antes de salir del dispositivo.</p><button class="secondary" type="button" id="pullCloud">Actualizar desde la nube</button><button class="primary" type="button" id="pushCloud">Guardar ahora en la nube</button><button class="secondary" type="button" id="showQr">Mostrar QR para el otro teléfono</button><button class="link" type="button" id="shareQr">Compartir vínculo del QR</button><div class="qr" id="familyQr" hidden></div><p class="note" id="cloudStatus"></p></form>`;
   }
   document.getElementById("cloudStatus").textContent = statusText;
   document.getElementById("closeCloud").onclick = () => dialog.close();
-  document.getElementById("sendCode")?.addEventListener("click", sendLoginCode);
-  document.getElementById("verifyCode")?.addEventListener("click", verifyLoginCode);
-  document.getElementById("createCloud")?.addEventListener("click", createFamily);
-  document.getElementById("pullCloud")?.addEventListener("click", downloadRemote);
+  document.getElementById("createVault")?.addEventListener("click", createVault);
+  document.getElementById("pullCloud")?.addEventListener("click", () => downloadRemote());
   document.getElementById("pushCloud")?.addEventListener("click", () => pushRemote(true));
-  document.getElementById("signOutCloud")?.addEventListener("click", signOut);
+  document.getElementById("showQr")?.addEventListener("click", async () => {
+    const qr = document.getElementById("familyQr");
+    qr.hidden = false;
+    await renderQr();
+  });
+  document.getElementById("shareQr")?.addEventListener("click", sharePairing);
 }
 
 cloudButton.onclick = () => {
@@ -222,22 +227,6 @@ Storage.prototype.setItem = function setItem(key, value) {
   if (this === localStorage && SYNCED_KEYS.includes(key)) schedulePush();
 };
 
-supabase.auth.onAuthStateChange((_event, nextSession) => {
-  session = nextSession;
-  if (session) {
-    findFamily().then((found) => {
-      family = found;
-      setStatus(found ? "Nube familiar conectada." : statusText);
-    });
-  } else {
-    family = null;
-    setStatus("Inicia sesión para activar la nube familiar.");
-  }
-});
-
-const initial = await supabase.auth.getSession();
-session = initial.data.session;
-if (session) {
-  family = await findFamily();
-  setStatus(family ? "Nube familiar conectada." : statusText);
-}
+await claimPairingFromUrl();
+await restorePairingFromCookie();
+setStatus(isPairing(pairing) ? "Nube privada conectada." : statusText);

@@ -487,6 +487,25 @@
         color: var(--m);
         line-height: 1.45;
       }
+      .qr {
+        margin: 16px auto 4px;
+        max-width: 320px;
+        padding: 12px;
+        border: 1px solid var(--l);
+        border-radius: 18px;
+        text-align: center;
+        background: #fffdfb;
+      }
+      .qr img {
+        display: block;
+        width: min(280px, 100%);
+        height: auto;
+        margin: 0 auto;
+        border-radius: 8px;
+      }
+      .break {
+        overflow-wrap: anywhere;
+      }
       .toast {
         position: fixed;
         z-index: 5;
@@ -695,6 +714,6 @@
     <div class="toast" id="toast"></div>
   <script src="/app.js?v=20260911-1830"></script>
   <script src="/family.js?v=20260911-1900"></script>
-  <script type="module" src="/cloud.js?v=20260911-2015"></script>
+  <script type="module" src="/cloud.js?v=20260911-2140"></script>
   </body>
 </html>

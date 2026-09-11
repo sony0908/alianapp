@@ -1,4 +1,5 @@
 const recentRequests = new Map();
+const { validatePairing } = require("./_vault");
 
 function cleanList(value, limit, length) {
   if (!Array.isArray(value)) return [];
@@ -29,6 +30,12 @@ module.exports = async function handler(request, response) {
   const origin = request.headers.origin || "";
   if (origin && !/^https:\/\/([a-z0-9-]+\.)?vercel\.app$/i.test(origin)) {
     return response.status(403).json({ error: "Origen no autorizado." });
+  }
+  try {
+    const pairing = await validatePairing(request);
+    if (!pairing) return response.status(401).json({ error: "Empareja este teléfono con el QR familiar antes de usar la IA." });
+  } catch {
+    return response.status(503).json({ error: "La nube privada debe configurarse antes de usar la IA." });
   }
   const address = String(request.headers["x-forwarded-for"] || "").split(",")[0].trim() || "unknown";
   const now = Date.now();
