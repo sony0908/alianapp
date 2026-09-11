@@ -1,5 +1,5 @@
-const CACHE = 'bichito-v1';
-const ASSETS = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg'];
+const CACHE = 'bichito-v2';
+const ASSETS = ['/', '/index.html', '/app.js', '/manifest.webmanifest', '/favicon.svg'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)));
