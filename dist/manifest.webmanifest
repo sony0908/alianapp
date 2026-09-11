@@ -1,0 +1,17 @@
+{
+  "name": "Bichito",
+  "short_name": "Bichito",
+  "description": "El ritmo de tu bichito, a tu manera.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fff8f2",
+  "theme_color": "#df7446",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#df7446">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Bichito">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/favicon.svg">
+  <title>Bichito · Hoy</title>
+  <style>
+    :root { --ink:#26313b; --muted:#68717a; --paper:#fff8f2; --surface:#fffdfb; --line:#eee3d9; --orange:#df7446; --orange-soft:#fde3d5; --blue:#5e9dcc; --blue-soft:#e0eff9; --green:#698b79; --shadow:0 16px 35px rgba(91,57,35,.09); }
+    * { box-sizing:border-box; }
+    body { margin:0; min-width:320px; background:linear-gradient(145deg,#fff8f2 0%,#fff5ee 46%,#f5f5fa 100%); color:var(--ink); font-family:ui-rounded,"SF Pro Rounded","Avenir Next",system-ui,sans-serif; }
+    button,input,select { font:inherit; }
+    button { cursor:pointer; }
+    .app { max-width:760px; min-height:100dvh; margin:auto; padding:calc(18px + env(safe-area-inset-top)) 20px calc(100px + env(safe-area-inset-bottom)); }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .brand { display:flex; align-items:center; gap:10px; font-size:1.32rem; font-weight:800; letter-spacing:-.04em; }
+    .brand-mark { width:34px; height:34px; display:grid; place-items:center; border-radius:12px; color:#fff; background:var(--orange); }
+    .brand-mark svg { width:20px; height:20px; }
+    .icon-button { border:1px solid var(--line); background:var(--surface); color:var(--ink); width:42px; height:42px; border-radius:14px; display:grid; place-items:center; }
+    .icon-button svg { width:19px; height:19px; }
+    .greeting { margin:32px 0 16px; }
+    .eyebrow { margin:0 0 6px; color:var(--muted); font-size:.84rem; font-weight:650; }
+    h1 { margin:0; font-size:clamp(1.75rem,6vw,2.35rem); letter-spacing:-.055em; line-height:1.08; }
+    .now-card { position:relative; overflow:hidden; padding:24px; border-radius:28px; background:var(--surface); box-shadow:var(--shadow); }
+    .now-card::after { content:""; position:absolute; width:180px; height:180px; right:-68px; top:-82px; border-radius:50%; background:var(--orange-soft); opacity:.82; }
+    .now-head { position:relative; z-index:1; display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }
+    .small-label { color:var(--muted); font-size:.77rem; font-weight:760; letter-spacing:.09em; text-transform:uppercase; }
+    .now-title { margin:5px 0 5px; font-size:1.35rem; font-weight:800; letter-spacing:-.04em; }
+    .now-copy { margin:0; color:var(--muted); font-size:.94rem; line-height:1.45; }
+    .timer { position:relative; z-index:1; min-width:74px; width:74px; height:74px; display:grid; place-items:center; border:5px solid var(--orange); border-radius:50%; background:var(--paper); font-size:.87rem; font-weight:800; text-align:center; line-height:1.05; }
+    .dayline { position:relative; z-index:1; margin-top:25px; }
+    .dayline-labels { display:flex; justify-content:space-between; margin-bottom:8px; color:var(--muted); font-size:.77rem; }
+    .dayline-bar { position:relative; height:9px; border-radius:999px; background:linear-gradient(90deg,var(--blue),#a9c2d8 39%,#e6ae79 69%,var(--orange)); }
+    .dayline-dot { position:absolute; width:18px; height:18px; left:65%; top:-4px; border:3px solid var(--ink); border-radius:50%; background:var(--paper); transition:left .35s ease, border-color .35s ease; }
+    .section-head { display:flex; align-items:center; justify-content:space-between; margin:28px 2px 12px; }
+    h2 { margin:0; font-size:1.04rem; letter-spacing:-.025em; }
+    .link-button { border:0; padding:4px 0; color:var(--orange); background:transparent; font-size:.88rem; font-weight:750; }
+    .quick-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; }
+    .quick { min-height:90px; padding:10px 5px; border:1px solid var(--line); border-radius:18px; color:var(--ink); background:var(--surface); box-shadow:0 7px 18px rgba(92,57,36,.035); transition:transform .18s ease, border-color .18s ease, background .18s ease; }
+    .quick:active { transform:scale(.97); }
+    .quick.is-active { color:#a74325; border-color:var(--orange); background:var(--orange-soft); }
+    .quick svg { display:block; width:23px; height:23px; margin:0 auto 8px; }
+    .quick span { display:block; font-size:.8rem; font-weight:730; }
+    .next-card { display:flex; align-items:center; gap:13px; padding:15px; border:1px solid var(--line); border-radius:20px; background:var(--surface); }
+    .next-icon { flex:0 0 auto; display:grid; place-items:center; width:40px; height:40px; border-radius:14px; color:var(--blue); background:var(--blue-soft); }
+    .next-icon svg { width:21px; height:21px; }
+    .next-card strong,.next-card span { display:block; }
+    .next-card strong { font-size:.93rem; }
+    .next-card span { margin-top:2px; color:var(--muted); font-size:.79rem; line-height:1.35; }
+    .timeline { display:grid; gap:10px; }
+    .timeline-empty { padding:22px; border:1px dashed #d9cbbf; border-radius:18px; color:var(--muted); background:rgba(255,255,255,.38); text-align:center; font-size:.9rem; }
+    .event { display:flex; align-items:center; gap:12px; padding:12px 13px; border:1px solid var(--line); border-radius:18px; background:var(--surface); }
+    .event-symbol { display:grid; place-items:center; width:36px; height:36px; border-radius:12px; background:var(--blue-soft); color:var(--blue); }
+    .event-symbol.orange { background:var(--orange-soft); color:var(--orange); }
+    .event-title { flex:1; font-size:.92rem; font-weight:730; }
+    .event-time { color:var(--muted); font-size:.8rem; }
+    .event-delete { border:0; padding:5px; color:var(--muted); background:transparent; }
+    .bottom-nav { position:fixed; left:50%; bottom:calc(10px + env(safe-area-inset-bottom)); transform:translateX(-50%); width:min(430px,calc(100% - 28px)); display:grid; grid-template-columns:repeat(3,1fr); padding:7px; border:1px solid rgba(226,211,199,.85); border-radius:22px; background:rgba(255,253,251,.92); box-shadow:0 13px 35px rgba(64,44,32,.16); backdrop-filter:blur(16px); }
+    .nav-item { display:grid; place-items:center; gap:3px; padding:5px; border:0; color:var(--muted); background:transparent; border-radius:15px; font-size:.7rem; }
+    .nav-item svg { width:20px; height:20px; }
+    .nav-item.is-active { color:var(--orange); background:var(--orange-soft); font-weight:800; }
+    dialog { width:min(500px,calc(100% - 30px)); border:0; border-radius:26px; padding:0; color:var(--ink); background:var(--surface); box-shadow:0 28px 90px rgba(35,29,24,.26); }
+    dialog::backdrop { background:rgba(39,34,29,.38); backdrop-filter:blur(3px); }
+    .sheet { padding:22px; }
+    .sheet-top { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    .sheet h2 { font-size:1.25rem; }
+    .close { border:0; width:36px; height:36px; border-radius:12px; color:var(--muted); background:#f6eee8; }
+    .field { display:grid; gap:7px; margin-top:18px; font-size:.88rem; font-weight:700; }
+    .field input,.field select { width:100%; border:1px solid var(--line); border-radius:14px; padding:13px; color:var(--ink); background:#fff; }
+    .voice-copy { margin:12px 0 0; color:var(--muted); line-height:1.5; font-size:.92rem; }
+    .voice-result { min-height:54px; margin-top:16px; padding:13px; border-radius:15px; color:var(--muted); background:#f8f1eb; line-height:1.45; font-size:.9rem; }
+    .primary { width:100%; margin-top:18px; border:0; border-radius:16px; padding:15px; color:#fff; background:var(--orange); font-weight:800; }
+    .secondary { width:100%; margin-top:10px; border:1px solid var(--line); border-radius:16px; padding:13px; color:var(--ink); background:var(--surface); font-weight:750; }
+    .settings-note { margin:16px 0 0; color:var(--muted); font-size:.83rem; line-height:1.45; }
+    .toast { position:fixed; left:50%; bottom:104px; transform:translate(-50%,18px); z-index:5; max-width:calc(100% - 40px); opacity:0; pointer-events:none; padding:11px 15px; border-radius:14px; color:#fff; background:var(--ink); box-shadow:0 12px 26px rgba(0,0,0,.16); font-size:.87rem; transition:opacity .2s ease,transform .2s ease; }
+    .toast.show { opacity:1; transform:translate(-50%,0); }
+    @media (min-width:700px) { .app { padding-left:32px; padding-right:32px; } .quick-grid { gap:12px; } .now-card { padding:28px; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand" aria-label="Bichito"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13c0-4 3-7 7-7s7 3 7 7c0 3.5-2.4 6.2-5.7 6.8L12 22l-1.3-2.2C7.4 19.2 5 16.5 5 13Z"/><path d="M9 13h.01M15 13h.01" stroke-linecap="round"/><path d="M9.5 16c1.4.9 3.6.9 5 0" stroke-linecap="round"/></svg></span>Bichito</div>
+      <button class="icon-button" id="settingsButton" aria-label="Ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.04 1.56V20h-3v-.08A1.7 1.7 0 0 0 10.66 18.36a1.7 1.7 0 0 0-1.88.34l-.06.06L6.6 16.64l.06-.06A1.7 1.7 0 0 0 7 14.7a1.7 1.7 0 0 0-1.56-1.04H5v-3h.08A1.7 1.7 0 0 0 6.64 9.62 1.7 1.7 0 0 0 6.3 7.74l-.06-.06L8.36 5.56l.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 11.34 4.4V4h3v.08a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.12 2.12-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.04H20v3h-.08A1.7 1.7 0 0 0 18.36 14.4 1.7 1.7 0 0 0 19.4 15Z"/></svg></button>
+    </header>
+    <section class="greeting" aria-labelledby="todayTitle"><p class="eyebrow" id="todayDate"></p><h1 id="todayTitle">El ritmo de hoy</h1></section>
+    <section class="now-card" aria-live="polite"><div class="now-head"><div><div class="small-label">Ahora</div><div class="now-title" id="nowTitle">Un comienzo tranquilo</div><p class="now-copy" id="nowCopy">Registra el primer momento de su día.</p></div><div class="timer" id="timer">Listo</div></div><div class="dayline"><div class="dayline-labels"><span>Despertar</span><span>Descanso</span></div><div class="dayline-bar"><span class="dayline-dot" id="dayDot"></span></div></div></section>
+    <section><div class="section-head"><h2>Registro rápido</h2><button class="link-button" id="addManual">Añadir hora</button></div><div class="quick-grid"><button class="quick" id="sleepButton"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 15.5A8.6 8.6 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z"/></svg><span id="sleepLabel">Siesta</span></button><button class="quick" data-event="feeding"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4h6v4l2 2v9H7v-9l2-2V4Z"/><path d="M9 12h6M10 4V2h4v2"/></svg><span>Leche</span></button><button class="quick" data-event="diaper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 7c2 1 4 1.5 7 1.5S17 8 19 7v9c-2.5 1.5-4.8 2-7 2s-4.5-.5-7-2V7Z"/><path d="M8 12c1.2 1.2 2.5 1.8 4 1.8s2.8-.6 4-1.8"/></svg><span>Pañal</span></button><button class="quick" id="voiceButton"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg><span>Decirlo</span></button></div></section>
+    <section><div class="section-head"><h2>Próximo momento</h2></div><div class="next-card"><span class="next-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.7 4.8L6 9.5l4.3 1.7L12 16l1.7-4.8L18 9.5l-4.3-1.7L12 3Z"/><path d="m19 15-.8 2.2L16 18l2.2.8L19 21l.8-2.2L22 18l-2.2-.8L19 15Z"/></svg></span><div><strong id="nextTitle">La próxima siesta se irá ajustando</strong><span id="nextDetail">Bichito aprende del ritmo que tú registras.</span></div></div></section>
+    <section><div class="section-head"><h2>Hoy</h2><button class="link-button" id="clearToday">Limpiar día</button></div><div class="timeline" id="timeline"></div></section>
+  </main>
+  <nav class="bottom-nav" aria-label="Navegación"><button class="nav-item is-active" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10Z"/></svg>Hoy</button><button class="nav-item" id="historyButton"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Historia</button><button class="nav-item" id="installButton"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3"/></svg>Instalar</button></nav>
+  <dialog id="manualDialog"><form method="dialog" class="sheet"><div class="sheet-top"><h2>Añadir registro</h2><button class="close" value="cancel" aria-label="Cerrar">×</button></div><label class="field">Tipo<select id="manualType"><option value="sleepStart">Inicio de siesta</option><option value="sleepEnd">Fin de siesta</option><option value="feeding">Leche</option><option value="diaper">Pañal</option></select></label><label class="field">Hora<input id="manualTime" type="time"></label><button class="primary" id="saveManual" value="default">Guardar registro</button></form></dialog>
+  <dialog id="voiceDialog"><section class="sheet"><div class="sheet-top"><h2>Cuéntame</h2><button class="close" id="closeVoice" aria-label="Cerrar">×</button></div><p class="voice-copy">Por ejemplo: “Bichito tomó leche ahora” o “empezó la siesta”.</p><div class="voice-result" id="voiceResult">Toca el botón y habla.</div><button class="primary" id="startVoice">Empezar a escuchar</button><button class="secondary" id="saveVoice">Guardar como nota</button></section></dialog>
+  <dialog id="settingsDialog"><section class="sheet"><div class="sheet-top"><h2>Ajustes</h2><button class="close" id="closeSettings" aria-label="Cerrar">×</button></div><label class="field">Nombre o apodo<input id="babyName" maxlength="24" placeholder="Bichito"></label><label class="field">Ventana despierto aproximada<select id="wakeWindow"><option value="90">1 h 30 min</option><option value="120" selected>2 h</option><option value="150">2 h 30 min</option><option value="180">3 h</option></select></label><button class="primary" id="saveSettings">Guardar ajustes</button><p class="settings-note">Todo queda guardado solo en este dispositivo. Las estimaciones son orientativas y no reemplazan consejos médicos.</p></section></dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script>
+    const storageKey = 'bichito-data-v1';
+    const initial = { events: [], settings: { name: 'Bichito', wakeWindow: 120 }, activeSleepStart: null };
+    let state = JSON.parse(localStorage.getItem(storageKey) || 'null') || initial;
+    let voiceText = '';
+    let deferredInstall;
+    const $ = id => document.getElementById(id);
+    const now = () => new Date();
+    const eventMeta = { sleepStart:{label:'Comenzó una siesta',icon:'◐',tone:'orange'}, sleepEnd:{label:'Terminó una siesta',icon:'◑',tone:''}, feeding:{label:'Tomó leche',icon:'◌',tone:'orange'}, diaper:{label:'Cambio de pañal',icon:'◒',tone:''}, note:{label:'Nota de voz',icon:'•',tone:'orange'} };
+    function save(){ localStorage.setItem(storageKey, JSON.stringify(state)); }
+    function todayKey(date=new Date()){ return date.toLocaleDateString('en-CA'); }
+    function timeLabel(date){ return new Intl.DateTimeFormat('es-CL',{hour:'2-digit',minute:'2-digit'}).format(new Date(date)); }
+    function friendlyDate(){ return new Intl.DateTimeFormat('es-CL',{weekday:'long',day:'numeric',month:'long'}).format(now()).replace(/^./, c => c.toUpperCase()); }
+    function todayEvents(){ return state.events.filter(event => todayKey(event.time) === todayKey()).sort((a,b) => new Date(b.time)-new Date(a.time)); }
+    function addEvent(type, time=new Date().toISOString(), note=''){ state.events.push({ id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()+Math.random()), type, time, note }); save(); render(); toast(type === 'note' ? 'Nota guardada' : 'Registro guardado'); }
+    function removeEvent(id){ state.events = state.events.filter(event => event.id !== id); if(state.activeSleepStart === id) state.activeSleepStart = null; save(); render(); }
+    function estimate(){ const events = todayEvents(); const lastSleepEnd = events.find(event => event.type === 'sleepEnd'); const lastSleepStart = events.find(event => event.type === 'sleepStart'); if(state.activeSleepStart) return { mode:'sleeping', title:'Está descansando', copy:'La siesta sigue en curso. Cuando despierte, toca Siesta de nuevo.', timer:'Zzz', dot:'78%', next:'Cuando despierte, recalculamos', detail:'El ritmo se ajusta con cada registro.' }; const reference = lastSleepEnd || (lastSleepStart && !lastSleepEnd ? null : events[0]); if(!reference) return { mode:'empty', title:'Un comienzo tranquilo', copy:'Registra el primer momento de su día.', timer:'Listo', dot:'14%', next:'La próxima siesta se irá ajustando', detail:'Bichito aprende del ritmo que tú registras.' }; const target = new Date(new Date(reference.time).getTime() + Number(state.settings.wakeWindow)*60000); const diff = Math.round((target-now())/60000); const hour = new Intl.DateTimeFormat('es-CL',{hour:'2-digit',minute:'2-digit'}).format(target); if(diff <= 0) return { mode:'ready', title:'Ventana de descanso', copy:'Parece un buen momento para bajar el ritmo.', timer:'Ahora', dot:'82%', next:'La siesta puede ser ahora', detail:'Estimación basada en la última ventana despierto.' }; return { mode:'awake', title:'Tiempo despierto', copy:`La próxima ventana de calma se acerca a las ${hour}.`, timer:`${diff} min`, dot:diff<30?'70%':'47%', next:`Próxima siesta: ${hour}`, detail:`En aproximadamente ${diff} minutos, según tu ajuste.` }; }
+    function render(){ const e=estimate(); $('todayDate').textContent=friendlyDate(); $('nowTitle').textContent=e.title; $('nowCopy').textContent=e.copy; $('timer').textContent=e.timer; $('dayDot').style.left=e.dot; $('nextTitle').textContent=e.next; $('nextDetail').textContent=e.detail; $('sleepButton').classList.toggle('is-active',Boolean(state.activeSleepStart)); $('sleepLabel').textContent=state.activeSleepStart?'Terminar':'Siesta'; const events=todayEvents(); $('timeline').innerHTML = events.length ? events.map(event => { const m=eventMeta[event.type]; return `<article class="event"><span class="event-symbol ${m.tone}">${m.icon}</span><span class="event-title">${m.label}${event.note?`: ${escapeHtml(event.note)}`:''}</span><span class="event-time">${timeLabel(event.time)}</span><button class="event-delete" aria-label="Eliminar registro" data-delete="${event.id}">×</button></article>`; }).join('') : '<div class="timeline-empty">Todavía no hay registros. Empieza con una siesta, leche o pañal.</div>'; document.querySelectorAll('[data-delete]').forEach(button=>button.addEventListener('click',()=>removeEvent(button.dataset.delete))); }
+    function escapeHtml(text){ const el=document.createElement('div'); el.textContent=text; return el.innerHTML; }
+    let toastTimer; function toast(message){ const node=$('toast'); node.textContent=message; node.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>node.classList.remove('show'),2400); }
+    function toggleSleep(){ if(state.activeSleepStart){ addEvent('sleepEnd'); state.activeSleepStart=null; save(); render(); return; } const id=crypto.randomUUID ? crypto.randomUUID() : String(Date.now()+Math.random()); state.events.push({id,type:'sleepStart',time:new Date().toISOString(),note:''}); state.activeSleepStart=id; save(); render(); toast('Siesta iniciada'); }
+    $('sleepButton').addEventListener('click',toggleSleep);
+    document.querySelectorAll('[data-event]').forEach(button=>button.addEventListener('click',()=>addEvent(button.dataset.event)));
+    $('addManual').addEventListener('click',()=>{ $('manualTime').value=new Date().toTimeString().slice(0,5); $('manualDialog').showModal(); });
+    $('saveManual').addEventListener('click',event=>{ event.preventDefault(); const [hours,minutes]=$('manualTime').value.split(':').map(Number); const date=new Date(); date.setHours(hours,minutes,0,0); const type=$('manualType').value; if(type==='sleepStart'){ const id=crypto.randomUUID ? crypto.randomUUID() : String(Date.now()+Math.random()); state.events.push({id,type,time:date.toISOString(),note:''}); state.activeSleepStart=id; save(); render(); toast('Registro guardado'); } else addEvent(type,date.toISOString()); $('manualDialog').close(); });
+    $('clearToday').addEventListener('click',()=>{ if(confirm('¿Limpiar todos los registros de hoy?')){ state.events=state.events.filter(event=>todayKey(event.time)!==todayKey()); state.activeSleepStart=null; save(); render(); toast('Día limpio'); } });
+    $('settingsButton').addEventListener('click',()=>{ $('babyName').value=state.settings.name; $('wakeWindow').value=state.settings.wakeWindow; $('settingsDialog').showModal(); });
+    $('closeSettings').addEventListener('click',()=>$('settingsDialog').close());
+    $('saveSettings').addEventListener('click',()=>{ state.settings.name=$('babyName').value.trim()||'Bichito'; state.settings.wakeWindow=Number($('wakeWindow').value); save(); $('settingsDialog').close(); render(); toast('Ajustes guardados'); });
+    $('historyButton').addEventListener('click',()=>{ document.querySelector('.timeline').scrollIntoView({behavior:'smooth',block:'start'}); });
+    $('voiceButton').addEventListener('click',()=>{ voiceText=''; $('voiceResult').textContent='Toca el botón y habla.'; $('voiceDialog').showModal(); });
+    $('closeVoice').addEventListener('click',()=>$('voiceDialog').close());
+    $('startVoice').addEventListener('click',()=>{ const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition; if(!Recognition){ $('voiceResult').textContent='El dictado del navegador no está disponible aquí. Puedes escribir una nota en una próxima versión.'; return; } const recognition=new Recognition(); recognition.lang='es-CL'; recognition.interimResults=true; recognition.onstart=()=>{ $('startVoice').textContent='Escuchando…'; $('voiceResult').textContent='Te escucho…'; }; recognition.onresult=event=>{ voiceText=Array.from(event.results).map(result=>result[0].transcript).join(' '); $('voiceResult').textContent=voiceText; }; recognition.onerror=()=>{ $('voiceResult').textContent='No pude escuchar. Intenta otra vez o revisa el permiso del micrófono.'; }; recognition.onend=()=>{ $('startVoice').textContent='Escuchar otra vez'; }; recognition.start(); });
+    $('saveVoice').addEventListener('click',()=>{ if(!voiceText.trim()){ toast('Primero graba una nota'); return; } const normalized=voiceText.toLowerCase(); if(normalized.includes('siesta') && (normalized.includes('empez')||normalized.includes('dorm'))){ toggleSleep(); } else if(normalized.includes('leche')||normalized.includes('mamó')||normalized.includes('mamo')){ addEvent('feeding'); } else if(normalized.includes('pañal')||normalized.includes('panal')){ addEvent('diaper'); } else addEvent('note',new Date().toISOString(),voiceText); $('voiceDialog').close(); });
+    window.addEventListener('beforeinstallprompt',event=>{ event.preventDefault(); deferredInstall=event; });
+    $('installButton').addEventListener('click',async()=>{ if(deferredInstall){ deferredInstall.prompt(); await deferredInstall.userChoice; deferredInstall=null; return; } const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent); toast(isIOS?'En Safari: Compartir → Añadir a pantalla de inicio.':'Usa el menú del navegador para instalar Bichito.'); });
+    if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('/service-worker.js'));
+    render();
+  </script>
+</body>
+</html>
