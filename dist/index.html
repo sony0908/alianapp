@@ -226,6 +226,53 @@
         font-size: 0.82rem;
         line-height: 1.4;
       }
+      .cry-intro {
+        margin: 9px 0 0;
+        color: var(--m);
+        font-size: 0.84rem;
+        line-height: 1.4;
+      }
+      .cry-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .cry-item {
+        display: grid;
+        grid-template-columns: 22px 1fr;
+        gap: 9px;
+        align-items: start;
+        padding: 12px;
+        border: 1px solid var(--l);
+        border-radius: 16px;
+        background: var(--s);
+        cursor: pointer;
+      }
+      .cry-item input {
+        width: 18px;
+        height: 18px;
+        margin: 1px 0 0;
+        accent-color: var(--o);
+      }
+      .cry-item b,
+      .cry-item small {
+        display: block;
+      }
+      .cry-item small {
+        margin-top: 3px;
+        color: var(--m);
+        font-size: 0.78rem;
+        line-height: 1.35;
+      }
+      .cry-item.done {
+        border-color: #f0c5ae;
+        background: #fff7f1;
+      }
+      .cry-item.done b,
+      .cry-item.done small {
+        text-decoration: line-through;
+        text-decoration-color: #d6a48b;
+      }
       .timeline {
         display: grid;
         gap: 9px;
@@ -481,6 +528,11 @@
           </div>
           <div class="learn" id="learn"></div>
         </section>
+        <section class="section" aria-labelledby="cryTitle">
+          <h2 id="cryTitle">¿Por qué llora Bichito?</h2>
+          <p class="cry-intro">Revísalo por descarte y marca lo que ya comprobaste.</p>
+          <div class="cry-list" id="cryList"></div>
+        </section>
         <section class="section">
           <div class="head">
             <h2 id="listTitle">Hoy</h2>
@@ -613,7 +665,7 @@
       </section>
     </dialog>
     <div class="toast" id="toast"></div>
-  <script src="/app.js?v=20260911-1800"></script>
+  <script src="/app.js?v=20260911-1830"></script>
   <script src="/family.js?v=20260911-1800"></script>
   </body>
 </html>

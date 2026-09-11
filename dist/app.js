@@ -3,6 +3,7 @@ const K = "bichito-v2",
   $ = (x) => document.getElementById(x),
   blank = {
     events: [],
+    cryChecks: {},
     profile: {
       name: "Bichito",
       birthDate: "",
@@ -30,6 +31,7 @@ function load() {
     }
     return {
       events: x?.events || [],
+      cryChecks: x?.cryChecks || {},
       profile: { ...blank.profile, ...x?.profile },
     };
   } catch {
@@ -188,6 +190,61 @@ function estimate() {
         target,
       };
 }
+function latest(type) {
+  return all()
+    .filter((x) => x.type === type)
+    .at(-1);
+}
+function learnedNext(type) {
+  let records = all().filter((x) => x.type === type);
+  if (records.length < 2) return "Aún sin un patrón suficiente";
+  let gaps = records
+    .slice(1)
+    .map((record, index) => (+new Date(record.time) - +new Date(records[index].time)) / 60000)
+    .filter((gap) => gap >= 20 && gap <= 720);
+  if (!gaps.length) return "Aún sin un patrón suficiente";
+  let average = gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length;
+  let target = new Date(+new Date(records.at(-1).time) + average * 60000);
+  return target <= new Date() ? "Puede ser momento de revisar" : `Aprox. ${clock(target)}`;
+}
+function renderCryChecklist(sleepEstimate) {
+  let sleeping = active(),
+    lastSleep = sleeping || latest("sleepEnd"),
+    lastFeed = latest("feeding"),
+    lastDiaper = latest("diaper"),
+    lastSleepText = sleeping
+      ? `Siesta en curso desde ${clock(sleeping.time)}`
+      : lastSleep
+        ? `Última siesta: ${clock(lastSleep.time)}`
+        : "Aún sin siestas registradas",
+    nextSleepText = sleeping
+      ? "Próxima siesta: al despertar recalculamos"
+      : sleepEstimate.target
+        ? `Próxima siesta: ${clock(sleepEstimate.target)}`
+        : "Próxima siesta: aún estamos aprendiendo";
+  let checks = S.cryChecks[key()] || {};
+  let items = [
+    ["Sueño", `${lastSleepText}. ${nextSleepText}.`],
+    ["Hambre", `Última leche: ${lastFeed ? clock(lastFeed.time) : "sin registro"}. Próxima leche: ${learnedNext("feeding")}.`],
+    ["Pañal", `Último cambio: ${lastDiaper ? clock(lastDiaper.time) : "sin registro"}. Próximo posible cambio: ${learnedNext("diaper")}.`],
+    ["¿Está aburrido?", "Puede que lleve mucho rato en el mismo lugar."],
+    ["¿Incomodidad?", "Puede que lleve mucho rato en la misma posición."],
+    ["¿Dientes?", "Puede que le piquen las encías."],
+  ];
+  $("cryList").innerHTML = items
+    .map(
+      ([title, detail], index) =>
+        `<label class="cry-item ${checks[index] ? "done" : ""}"><input type="checkbox" data-cry="${index}" ${checks[index] ? "checked" : ""} /><span><b>${title}</b><small>${detail}</small></span></label>`,
+    )
+    .join("");
+  document.querySelectorAll("[data-cry]").forEach((checkbox) => {
+    checkbox.onchange = () => {
+      S.cryChecks[key()] = { ...checks, [checkbox.dataset.cry]: checkbox.checked };
+      save();
+      renderCryChecklist(estimate());
+    };
+  });
+}
 function sleep(d) {
   let s,
     total = 0;
@@ -221,6 +278,7 @@ function render() {
   $("learn").textContent = e.mo.learn
     ? `Aprendiendo de ${e.mo.n} ventanas reales: su promedio actual es ${mins(e.mo.m)} despierto.`
     : `Faltan ${2 - e.mo.n} ventana${2 - e.mo.n === 1 ? "" : "s"} completa${2 - e.mo.n === 1 ? "" : "s"} para personalizar. Por ahora usamos ${mins(e.mo.m)}.`;
+  renderCryChecklist(e);
   list();
   history();
   reminder(e);
