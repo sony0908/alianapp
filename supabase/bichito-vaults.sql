@@ -15,3 +15,8 @@ alter table public.bichito_vaults enable row level security;
 
 -- No hay acceso desde el navegador: solo la API de Vercel usa la clave secreta.
 revoke all on table public.bichito_vaults from anon, authenticated;
+
+-- La función de Vercel usa la clave secreta con rol de servicio;
+-- es el único proceso autorizado a leer o cambiar la bóveda.
+grant usage on schema public to service_role;
+grant select, insert, update on table public.bichito_vaults to service_role;
