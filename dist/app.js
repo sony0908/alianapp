@@ -529,13 +529,9 @@ $("saveTalk").onclick = () => {
   else add("note", new Date().toISOString(), {}, text);
   $("talk").close();
 };
-// Bichito prioriza estar al día: elimina el caché offline legado al abrirse.
-// La aplicación instalada seguirá funcionando, pero necesitará conexión.
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.getRegistrations().then((registrations) => {
-      registrations.forEach((registration) => registration.unregister());
-    });
+    navigator.serviceWorker.register("/service-worker.js").catch(() => {});
   });
 }
 render();

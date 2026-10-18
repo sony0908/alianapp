@@ -28,5 +28,21 @@
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Pantalla principal de rutinas y siestas de Bichito"
+    },
+    {
+      "src": "/screenshot-wide.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Vista completa de familia, salud y nube privada"
+    }
   ]
 }
