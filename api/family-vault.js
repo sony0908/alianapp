@@ -19,7 +19,7 @@ function sendError(response, status, error) {
 
 function allowedOrigin(request) {
   const origin = String(request.headers.origin || "");
-  return !origin || /^https:\/\/([a-z0-9-]+\.)?vercel\.app$/i.test(origin) || /^http:\/\/localhost(?::\d+)?$/i.test(origin);
+  return !origin || /^https:\/\/([a-z0-9-]+\.)?vercel\.app$/i.test(origin) || /^http:\/\/localhost(?::\d+)?$/i.test(origin) || /^https:\/\/.*\.run\.app$/i.test(origin) || origin.startsWith("capacitor://") || origin.startsWith("http://localhost");
 }
 
 function parseBody(request) {

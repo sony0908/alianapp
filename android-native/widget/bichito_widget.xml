@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="14dp"
+    android:background="@drawable/widget_background">
+
+    <!-- Top Header: Logo, Name & Status -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Bichito"
+            android:textColor="#df7446"
+            android:textStyle="bold"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/widget_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Hace 25 min"
+            android:textColor="#69747e"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <!-- Routine Status Card -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="10dp">
+
+        <TextView
+            android:id="@+id/widget_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Próxima siesta sugerida: ~15:30"
+            android:textColor="#26313b"
+            android:textStyle="bold"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/widget_detail"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="Última toma: Biberón 180 ml"
+            android:textColor="#69747e"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <!-- Quick Action Shortcut Buttons for Home Screen -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:weightSum="3">
+
+        <Button
+            android:id="@+id/btn_quick_feed"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="4dp"
+            android:text="🍼 Comida"
+            android:textSize="11sp"
+            android:textColor="#ffffff"
+            android:background="#df7446" />
+
+        <Button
+            android:id="@+id/btn_quick_sleep"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="4dp"
+            android:text="😴 Siesta"
+            android:textSize="11sp"
+            android:textColor="#ffffff"
+            android:background="#5e9dcc" />
+
+        <Button
+            android:id="@+id/btn_quick_diaper"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:text="🚼 Pañal"
+            android:textSize="11sp"
+            android:textColor="#26313b"
+            android:background="#eee2d8" />
+    </LinearLayout>
+</LinearLayout>

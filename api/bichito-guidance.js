@@ -28,7 +28,7 @@ module.exports = async function handler(request, response) {
     return response.status(503).json({ error: "La IA aún no está conectada. Agrega GEMINI_API_KEY en las variables de entorno de Vercel." });
   }
   const origin = request.headers.origin || "";
-  if (origin && !/^https:\/\/([a-z0-9-]+\.)?vercel\.app$/i.test(origin)) {
+  if (origin && !/^https:\/\/([a-z0-9-]+\.)?vercel\.app$/i.test(origin) && !/^https:\/\/.*\.run\.app$/i.test(origin) && !/^http:\/\/localhost(?::\d+)?$/i.test(origin) && !origin.startsWith("capacitor://")) {
     return response.status(403).json({ error: "Origen no autorizado." });
   }
   try {
