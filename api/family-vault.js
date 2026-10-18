@@ -89,7 +89,10 @@ module.exports = async function handler(request, response) {
     if (body.action === "write") {
       const ciphertext = String(body.ciphertext || "");
       const iv = String(body.iv || "");
-      const expectedVersion = Number(body.expectedVersion);
+      // Compatibilidad breve para una PWA que todavía tenga el script anterior en caché.
+      const expectedVersion = body.expectedVersion === undefined
+        ? Number(pairing.vault.version || 0)
+        : Number(body.expectedVersion);
       if (!ciphertext || ciphertext.length > MAX_CIPHERTEXT_LENGTH || !/^[A-Za-z0-9_-]+$/.test(ciphertext) || !/^[A-Za-z0-9_-]{12,40}$/.test(iv)) {
         return sendError(response, 400, "El contenido cifrado no tiene un formato válido o es demasiado grande.");
       }
