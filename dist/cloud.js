@@ -1,6 +1,7 @@
 const META_KEY = "bichito-vault-v2";
 const SYNCED_KEYS = ["bichito-v2", "bichito-family-v1", "bichito-ai-guidance-v1"];
 const VAULT_API = "/api/family-vault";
+const POLL_INTERVAL_MS = 25000;
 
 const escapeHtml = (value = "") => {
   const node = document.createElement("i");
@@ -21,6 +22,8 @@ const payload = () => ({
 let pairing = readMeta();
 let applyingRemote = false;
 let syncTimer = null;
+let syncInFlight = null;
+let changesSinceLastSync = 0;
 let statusText = pairing ? "Nube privada conectada." : "Crea o escanea el QR de su familia para activar la nube.";
 const cloudButton = document.getElementById("cloud");
 const dialog = document.createElement("dialog");
@@ -29,6 +32,15 @@ document.body.append(dialog);
 
 function isPairing(value) {
   return value && value.vaultId === "bichito-family" && /^[A-Za-z0-9_-]{40,}$/.test(value.token || "");
+}
+
+function syncVersion() {
+  return Number.isSafeInteger(Number(pairing?.syncVersion)) ? Number(pairing.syncVersion) : 0;
+}
+
+function savePairing(patch = {}) {
+  pairing = { ...pairing, ...patch };
+  writeMeta(pairing);
 }
 
 function bytesToBase64Url(bytes) {
@@ -70,7 +82,12 @@ async function api(path = "", options = {}) {
     ...options,
   });
   const result = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(result.error || "No se pudo conectar con la nube privada.");
+  if (!response.ok) {
+    const error = new Error(result.error || "No se pudo conectar con la nube privada.");
+    error.status = response.status;
+    error.data = result;
+    throw error;
+  }
   return result;
 }
 
@@ -83,6 +100,57 @@ function setStatus(text) {
 
 function pairingUrl() {
   return `${location.origin}/?bichito-vault=${encodeURIComponent(pairing.vaultId)}#bichito-token=${encodeURIComponent(pairing.token)}`;
+}
+
+function mergeById(remoteList, localList) {
+  const merged = new Map();
+  (Array.isArray(remoteList) ? remoteList : []).forEach((item) => item?.id && merged.set(item.id, item));
+  (Array.isArray(localList) ? localList : []).forEach((item) => item?.id && merged.set(item.id, item));
+  return [...merged.values()];
+}
+
+function mergePayload(remote, local) {
+  const remoteRoutines = remote?.routines || {};
+  const localRoutines = local?.routines || {};
+  const remoteFamily = remote?.family || {};
+  const localFamily = local?.family || {};
+  const mergedChecks = { ...remoteRoutines.cryChecks };
+  Object.entries(localRoutines.cryChecks || {}).forEach(([date, checks]) => {
+    mergedChecks[date] = { ...(mergedChecks[date] || {}), ...checks };
+  });
+  return {
+    routines: {
+      ...remoteRoutines,
+      ...localRoutines,
+      events: mergeById(remoteRoutines.events, localRoutines.events),
+      cryChecks: mergedChecks,
+      profile: { ...(remoteRoutines.profile || {}), ...(localRoutines.profile || {}) },
+    },
+    family: {
+      ...remoteFamily,
+      ...localFamily,
+      health: mergeById(remoteFamily.health, localFamily.health),
+      milestones: mergeById(remoteFamily.milestones, localFamily.milestones),
+      stock: mergeById(remoteFamily.stock, localFamily.stock),
+    },
+    guidance: local?.guidance || remote?.guidance || "",
+  };
+}
+
+function applyPayload(value) {
+  applyingRemote = true;
+  try {
+    localStorage.setItem("bichito-v2", JSON.stringify(value.routines || {}));
+    localStorage.setItem("bichito-family-v1", JSON.stringify(value.family || {}));
+    localStorage.setItem("bichito-ai-guidance-v1", value.guidance || "");
+  } finally {
+    applyingRemote = false;
+  }
+}
+
+function reloadWithRemoteStatus(text) {
+  setStatus(text);
+  setTimeout(() => location.reload(), 450);
 }
 
 async function renderQr() {
@@ -98,23 +166,51 @@ async function renderQr() {
   }
 }
 
+async function saveEncryptedSnapshot(snapshot, expectedVersion) {
+  const encrypted = await encryptPayload(snapshot);
+  return api("", { method: "POST", body: JSON.stringify({ action: "write", expectedVersion, ...encrypted }) });
+}
+
 async function pushRemote(showFeedback = true) {
-  if (!isPairing(pairing) || applyingRemote) return;
-  try {
-    if (showFeedback) setStatus("Cifrando y guardando en la nube…");
-    const encrypted = await encryptPayload(payload());
-    const saved = await api("", { method: "POST", body: JSON.stringify({ action: "write", ...encrypted }) });
-    writeMeta({ ...pairing, syncedAt: saved.updatedAt || new Date().toISOString() });
-    setStatus("Datos familiares cifrados y sincronizados.");
-  } catch (error) {
-    setStatus(error.message || "No se pudo guardar. Revisa la conexión e inténtalo nuevamente.");
-  }
+  if (!isPairing(pairing) || applyingRemote) return null;
+  if (syncInFlight) return syncInFlight;
+  syncInFlight = (async () => {
+    const capturedChanges = changesSinceLastSync;
+    const localSnapshot = payload();
+    try {
+      if (showFeedback) setStatus("Cifrando y guardando en la nube…");
+      let saved;
+      try {
+        saved = await saveEncryptedSnapshot(localSnapshot, syncVersion());
+      } catch (error) {
+        if (error.status !== 409 || !error.data?.ciphertext) throw error;
+        const remoteSnapshot = await decryptPayload(error.data.ciphertext, error.data.iv);
+        const merged = mergePayload(remoteSnapshot, localSnapshot);
+        applyPayload(merged);
+        saved = await saveEncryptedSnapshot(merged, Number(error.data.version || 0));
+        savePairing({ syncVersion: saved.version, syncedAt: saved.updatedAt || new Date().toISOString(), dirty: false });
+        reloadWithRemoteStatus("Unimos los registros nuevos de ambos equipos.");
+        return saved;
+      }
+      savePairing({ syncVersion: saved.version, syncedAt: saved.updatedAt || new Date().toISOString(), dirty: changesSinceLastSync !== capturedChanges });
+      if (changesSinceLastSync !== capturedChanges) schedulePush();
+      if (showFeedback) setStatus("Datos familiares cifrados y sincronizados.");
+      return saved;
+    } catch (error) {
+      savePairing({ dirty: true, pendingAt: new Date().toISOString() });
+      if (showFeedback) setStatus(error.message || "No se pudo guardar. Quedó una copia pendiente para reintentar.");
+      return null;
+    } finally {
+      syncInFlight = null;
+    }
+  })();
+  return syncInFlight;
 }
 
 function schedulePush() {
   if (!isPairing(pairing) || applyingRemote) return;
   clearTimeout(syncTimer);
-  syncTimer = setTimeout(() => pushRemote(false), 1400);
+  syncTimer = setTimeout(() => pushRemote(false), 1200);
 }
 
 async function downloadRemote(reloadAfter = true) {
@@ -122,23 +218,54 @@ async function downloadRemote(reloadAfter = true) {
     setStatus("Descargando datos cifrados…");
     const remote = await api();
     if (!remote.ciphertext) {
+      savePairing({ syncVersion: Number(remote.version || 0), dirty: false });
       setStatus("La nube está lista; aún no tiene registros guardados.");
       return false;
     }
+    const localSnapshot = payload();
     const remotePayload = await decryptPayload(remote.ciphertext, remote.iv);
-    applyingRemote = true;
-    localStorage.setItem("bichito-v2", JSON.stringify(remotePayload.routines || {}));
-    localStorage.setItem("bichito-family-v1", JSON.stringify(remotePayload.family || {}));
-    localStorage.setItem("bichito-ai-guidance-v1", remotePayload.guidance || "");
-    writeMeta({ ...pairing, syncedAt: remote.updatedAt || new Date().toISOString() });
-    setStatus("Datos familiares descargados. Actualizando Bichito…");
-    if (reloadAfter) setTimeout(() => location.reload(), 400);
+    const hasPendingChanges = Boolean(pairing?.dirty);
+    applyPayload(hasPendingChanges ? mergePayload(remotePayload, localSnapshot) : remotePayload);
+    savePairing({ syncVersion: Number(remote.version || 0), syncedAt: remote.updatedAt || new Date().toISOString(), dirty: hasPendingChanges });
+    if (hasPendingChanges) {
+      const saved = await pushRemote(false);
+      if (saved) reloadWithRemoteStatus("Unimos y guardamos los cambios de ambos equipos.");
+      return true;
+    }
+    if (reloadAfter) reloadWithRemoteStatus("Datos familiares descargados. Actualizando Bichito…");
+    else setStatus("Datos familiares actualizados.");
     return true;
   } catch (error) {
     setStatus(error.message === "UNPAIRED" ? "Este teléfono aún no está emparejado." : "No se pudieron abrir los datos cifrados.");
     return false;
-  } finally {
-    applyingRemote = false;
+  }
+}
+
+async function checkForRemoteChanges() {
+  if (!isPairing(pairing) || applyingRemote || syncInFlight || document.hidden || !navigator.onLine) return;
+  try {
+    const remote = await api();
+    const remoteVersion = Number(remote.version || 0);
+    if (remoteVersion <= syncVersion()) {
+      if (pairing?.dirty) await pushRemote(false);
+      return;
+    }
+    if (pairing?.dirty) {
+      await pushRemote(false);
+      return;
+    }
+    if (document.querySelector("dialog[open]")) {
+      setStatus("Hay cambios de otro equipo listos para actualizar.");
+      return;
+    }
+    if (remote.ciphertext) {
+      const remotePayload = await decryptPayload(remote.ciphertext, remote.iv);
+      applyPayload(remotePayload);
+    }
+    savePairing({ syncVersion: remoteVersion, syncedAt: remote.updatedAt || new Date().toISOString(), dirty: false });
+    reloadWithRemoteStatus("Llegaron registros nuevos de otro equipo.");
+  } catch {
+    // Sin conexión o servidor temporalmente indisponible: la copia local queda intacta.
   }
 }
 
@@ -146,7 +273,7 @@ async function createVault() {
   try {
     setStatus("Creando la bóveda privada de Bichito…");
     const created = await api("", { method: "POST", body: JSON.stringify({ action: "create" }) });
-    pairing = { vaultId: created.vaultId, token: created.token };
+    pairing = { vaultId: created.vaultId, token: created.token, syncVersion: 0, dirty: true };
     writeMeta(pairing);
     await pushRemote(false);
     setStatus("Nube privada lista. Guarda este QR para emparejar el otro teléfono.");
@@ -165,7 +292,7 @@ async function claimPairingFromUrl() {
   try {
     setStatus("Emparejando este teléfono…");
     const claimed = await api("", { method: "POST", body: JSON.stringify({ action: "pair", vaultId, token }) });
-    pairing = { vaultId: claimed.vaultId, token: claimed.token };
+    pairing = { vaultId: claimed.vaultId, token: claimed.token, syncVersion: 0, dirty: false };
     writeMeta(pairing);
     history.replaceState({}, document.title, location.pathname);
     await downloadRemote(true);
@@ -181,7 +308,7 @@ async function restorePairingFromCookie() {
   if (isPairing(pairing)) return true;
   try {
     const session = await api("?action=session");
-    pairing = { vaultId: session.vaultId, token: session.token };
+    pairing = { vaultId: session.vaultId, token: session.token, syncVersion: 0, dirty: false };
     writeMeta(pairing);
     setStatus("Este teléfono quedó emparejado con la nube familiar.");
     await downloadRemote(true);
@@ -196,12 +323,17 @@ async function sharePairing() {
   try { await navigator.share({ title: "Bichito", text: "Empareja Bichito en este teléfono.", url: pairingUrl() }); } catch { /* el usuario canceló */ }
 }
 
+function lastSyncLabel() {
+  if (!pairing?.syncedAt) return "Aún estamos preparando la primera copia.";
+  return `Última sincronización: ${new Intl.DateTimeFormat("es-CL", { hour: "2-digit", minute: "2-digit" }).format(new Date(pairing.syncedAt))}.`;
+}
+
 function renderDialog() {
   const close = '<button class="x" id="closeCloud" aria-label="Cerrar">×</button>';
   if (!isPairing(pairing)) {
     dialog.innerHTML = `<form method="dialog" class="sheet"><div class="head"><h2>Nube familiar</h2>${close}</div><p class="note">No usa correo ni contraseña. Bichito cifra los datos antes de guardarlos; el QR es la llave privada de su familia.</p><button class="primary" type="button" id="createVault">Crear QR de familia</button><p class="note">Hazlo una sola vez desde tu teléfono. Luego escanéalo con el de la mamá.</p><p class="note" id="cloudStatus"></p></form>`;
   } else {
-    dialog.innerHTML = `<form method="dialog" class="sheet"><div class="head"><h2>Nube privada</h2>${close}</div><p class="note">Este teléfono está emparejado. Los cambios se cifran aquí antes de salir del dispositivo.</p><button class="secondary" type="button" id="pullCloud">Actualizar desde la nube</button><button class="primary" type="button" id="pushCloud">Guardar ahora en la nube</button><button class="secondary" type="button" id="showQr">Mostrar QR para el otro teléfono</button><button class="link" type="button" id="shareQr">Compartir vínculo del QR</button><div class="qr" id="familyQr" hidden></div><p class="note" id="cloudStatus"></p></form>`;
+    dialog.innerHTML = `<form method="dialog" class="sheet"><div class="head"><h2>Nube privada</h2>${close}</div><p class="note">Este teléfono busca cambios al volver a abrir Bichito y cada pocos segundos mientras está en uso. ${lastSyncLabel()}</p><button class="secondary" type="button" id="pullCloud">Actualizar desde la nube</button><button class="primary" type="button" id="pushCloud">Guardar ahora en la nube</button><button class="secondary" type="button" id="showQr">Mostrar QR para el otro teléfono</button><button class="link" type="button" id="shareQr">Compartir vínculo del QR</button><div class="qr" id="familyQr" hidden></div><p class="note" id="cloudStatus"></p></form>`;
   }
   document.getElementById("cloudStatus").textContent = statusText;
   document.getElementById("closeCloud").onclick = () => dialog.close();
@@ -223,10 +355,27 @@ cloudButton.onclick = () => {
 
 const originalSetItem = Storage.prototype.setItem;
 Storage.prototype.setItem = function setItem(key, value) {
+  const previous = this === localStorage ? this.getItem(key) : null;
   originalSetItem.call(this, key, value);
-  if (this === localStorage && SYNCED_KEYS.includes(key)) schedulePush();
+  if (this === localStorage && SYNCED_KEYS.includes(key) && !applyingRemote && previous !== value) {
+    changesSinceLastSync += 1;
+    savePairing({ dirty: true, pendingAt: new Date().toISOString() });
+    schedulePush();
+  }
 };
+
+window.addEventListener("online", () => {
+  if (pairing?.dirty) pushRemote(false);
+  else checkForRemoteChanges();
+});
+window.addEventListener("focus", () => checkForRemoteChanges());
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") checkForRemoteChanges();
+  if (document.visibilityState === "hidden" && pairing?.dirty) pushRemote(false);
+});
 
 await claimPairingFromUrl();
 await restorePairingFromCookie();
+await checkForRemoteChanges();
 setStatus(isPairing(pairing) ? "Nube privada conectada." : statusText);
+setInterval(checkForRemoteChanges, POLL_INTERVAL_MS);

@@ -89,20 +89,34 @@ module.exports = async function handler(request, response) {
     if (body.action === "write") {
       const ciphertext = String(body.ciphertext || "");
       const iv = String(body.iv || "");
+      const expectedVersion = Number(body.expectedVersion);
       if (!ciphertext || ciphertext.length > MAX_CIPHERTEXT_LENGTH || !/^[A-Za-z0-9_-]+$/.test(ciphertext) || !/^[A-Za-z0-9_-]{12,40}$/.test(iv)) {
         return sendError(response, 400, "El contenido cifrado no tiene un formato válido o es demasiado grande.");
       }
-      const rows = await rest(`bichito_vaults?id=eq.${VAULT_ID}&token_hash=eq.${pairing.vault.token_hash}`, {
+      if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 0) {
+        return sendError(response, 400, "Falta la versión de sincronización.");
+      }
+      const rows = await rest(`bichito_vaults?id=eq.${VAULT_ID}&token_hash=eq.${pairing.vault.token_hash}&version=eq.${expectedVersion}`, {
         method: "PATCH",
         body: {
           ciphertext,
           iv,
-          version: Number(pairing.vault.version || 0) + 1,
+          version: expectedVersion + 1,
           updated_at: new Date().toISOString(),
         },
       });
       const saved = Array.isArray(rows) ? rows[0] : null;
-      if (!saved) return sendError(response, 409, "No se pudo guardar porque cambió el acceso familiar.");
+      if (!saved) {
+        const latest = await getVault();
+        return response.status(409).json({
+          error: "Hay cambios recientes en otro dispositivo.",
+          conflict: true,
+          ciphertext: latest?.ciphertext || "",
+          iv: latest?.iv || "",
+          version: latest?.version || 0,
+          updatedAt: latest?.updated_at || null,
+        });
+      }
       response.setHeader("Cache-Control", "no-store");
       return response.status(200).json({ updatedAt: saved.updated_at, version: saved.version });
     }
