@@ -39,39 +39,54 @@ interface WardrobeState {
 
 const STORAGE_KEY = 'bichito-wardrobe-v1';
 
-// Catálogo inicial con prendas inspiradas en la referencia BabyStyle 3D
-const DEFAULT_ITEMS: ClothingItem[] = [
-  // Tops
-  { id: 'top-1', category: 'tops', name: 'Polera Básica Blanca', color: '#ffffff', secondaryColor: '#e0e0e0', subType: 'tshirt' },
-  { id: 'top-2', category: 'tops', name: 'Suéter Tejido Avena', color: '#ded3c5', secondaryColor: '#c5b59e', subType: 'sweater' },
-  { id: 'top-3', category: 'tops', name: 'Polerón Verde Salvia', color: '#88a698', secondaryColor: '#6d8a7c', subType: 'sweater' },
-  { id: 'top-4', category: 'tops', name: 'Body Terracota Bichito', color: '#df7446', secondaryColor: '#fff8f2', subType: 'bodysuit' },
-  { id: 'top-5', category: 'tops', name: 'Chaqueta Blazer Crema', color: '#eae3d2', secondaryColor: '#bfae95', subType: 'jacket' },
+// CERO DATOS FICTICIOS: Si el usuario no tiene prendas subidas, la app no inventa nada
+const DEFAULT_ITEMS: ClothingItem[] = [];
+const DEFAULT_SAVED_OUTFITS: SavedOutfit[] = [];
 
-  // Bottoms
-  { id: 'bot-1', category: 'bottoms', name: 'Falda Denim Mezclilla', color: '#3d5c7a', secondaryColor: '#28415c', subType: 'skirt' },
-  { id: 'bot-2', category: 'bottoms', name: 'Pantalón Jogger Avena', color: '#cfc4b6', secondaryColor: '#b8ab9a', subType: 'pants' },
-  { id: 'bot-3', category: 'bottoms', name: 'Pantalón Mezclilla Azul', color: '#2d4b68', secondaryColor: '#1c3349', subType: 'pants' },
-  { id: 'bot-4', category: 'bottoms', name: 'Jogger Verde Salvia', color: '#799688', secondaryColor: '#5e796c', subType: 'pants' },
-  { id: 'bot-5', category: 'bottoms', name: 'Pantalón Formal Gris Lino', color: '#9d9893', secondaryColor: '#75706b', subType: 'pants' },
+// Generador de textura de tejido realista (algodón/denim)
+function createFabricTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#808080';
+  ctx.fillRect(0, 0, 128, 128);
 
-  // Shoes
-  { id: 'sho-1', category: 'shoes', name: 'Zapatillas de Lona Gris', color: '#cac5bf', secondaryColor: '#ffffff', subType: 'shoes' },
-  { id: 'sho-2', category: 'shoes', name: 'Zapatitos Beige Cuero', color: '#bfae9b', secondaryColor: '#eae4dc', subType: 'shoes' },
-  { id: 'sho-3', category: 'shoes', name: 'Botitas Azules Suaves', color: '#4a7299', secondaryColor: '#ffffff', subType: 'shoes' },
-  { id: 'sho-4', category: 'shoes', name: 'Zapatitos Terracota', color: '#df7446', secondaryColor: '#ffffff', subType: 'shoes' },
+  ctx.strokeStyle = '#929292';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 128; i += 4) {
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i, 128);
+    ctx.stroke();
 
-  // Accessories
-  { id: 'acc-1', category: 'accessories', name: 'Gorro Beanie Crema', color: '#e8ded1', secondaryColor: '#cfbeab', subType: 'hat' },
-  { id: 'acc-2', category: 'accessories', name: 'Babero Algodón Blanco', color: '#ffffff', secondaryColor: '#df7446', subType: 'bib' },
-  { id: 'acc-3', category: 'accessories', name: 'Gorro Terracota Bichito', color: '#df7446', secondaryColor: '#fff8f2', subType: 'hat' },
-];
+    ctx.beginPath();
+    ctx.moveTo(0, i);
+    ctx.lineTo(128, i);
+    ctx.stroke();
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(16, 16);
+  return tex;
+}
 
-const DEFAULT_SAVED_OUTFITS: SavedOutfit[] = [
-  { id: 'outfit-1', name: 'Conjunto Avena Suéter', topId: 'top-2', bottomId: 'bot-2', shoesId: 'sho-2', accessoryId: null, createdAt: '2026-10-20' },
-  { id: 'outfit-2', name: 'Estilo Urbano Verde', topId: 'top-3', bottomId: 'bot-4', shoesId: 'sho-1', accessoryId: null, createdAt: '2026-10-22' },
-  { id: 'outfit-3', name: 'Look Elegante Blazer', topId: 'top-5', bottomId: 'bot-5', shoesId: 'sho-2', accessoryId: null, createdAt: '2026-10-25' },
-];
+// Generador de sombra de contacto suave
+function createContactShadowTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d')!;
+  const grad = ctx.createRadialGradient(128, 128, 8, 128, 128, 115);
+  grad.addColorStop(0, 'rgba(35, 25, 20, 0.65)');
+  grad.addColorStop(0.35, 'rgba(35, 25, 20, 0.28)');
+  grad.addColorStop(0.8, 'rgba(35, 25, 20, 0.08)');
+  grad.addColorStop(1, 'rgba(35, 25, 20, 0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 256, 256);
+  return new THREE.CanvasTexture(canvas);
+}
 
 // Clase Principal del Probador 3D con Three.js
 export class BabyStyle3D {
@@ -80,41 +95,53 @@ export class BabyStyle3D {
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
   private mannequinGroup: THREE.Group;
-  
+
+  // Texturas compartidas
+  private fabricBumpMap: THREE.CanvasTexture;
+
   // Mallas anatómicas del maniquí
   private headMesh!: THREE.Mesh;
+  private chromeShell!: THREE.Mesh;
+  private facePlate!: THREE.Mesh;
   private torsoMesh!: THREE.Mesh;
-  private leftArmMesh!: THREE.Mesh;
-  private rightArmMesh!: THREE.Mesh;
-  private leftLegMesh!: THREE.Mesh;
-  private rightLegMesh!: THREE.Mesh;
+  private chromeMaterial!: THREE.MeshStandardMaterial;
+  private porcelainMaterial!: THREE.MeshStandardMaterial;
+  private jointMaterial!: THREE.MeshStandardMaterial;
 
-  // Capas de ropa 3D
+  // Capas de ropa 3D realistas
   private topLayer!: THREE.Group;
   private topTorsoMesh!: THREE.Mesh;
+  private topCollarRing!: THREE.Mesh;
   private topSleeveLeft!: THREE.Mesh;
   private topSleeveRight!: THREE.Mesh;
+  private topCuffLeft!: THREE.Mesh;
+  private topCuffRight!: THREE.Mesh;
+  private topHemRing!: THREE.Mesh;
 
   private bottomLayer!: THREE.Group;
+  private bottomWaistband!: THREE.Mesh;
+  private bottomButton!: THREE.Mesh;
   private bottomHipsMesh!: THREE.Mesh;
   private bottomLegLeft!: THREE.Mesh;
   private bottomLegRight!: THREE.Mesh;
 
   private shoesLayer!: THREE.Group;
-  private shoeLeft!: THREE.Mesh;
-  private shoeRight!: THREE.Mesh;
+  private shoeUpperLeft!: THREE.Mesh;
+  private shoeUpperRight!: THREE.Mesh;
+  private shoeSoleLeft!: THREE.Mesh;
+  private shoeSoleRight!: THREE.Mesh;
 
   private accessoryLayer!: THREE.Group;
   private hatMesh!: THREE.Mesh;
+  private hatPomPom!: THREE.Mesh;
 
-  // Interacción y rotación
+  // Interacción y rotación 360
   private isDragging = false;
   private previousMousePosition = { x: 0, y: 0 };
   private targetRotationY = 0;
   private autoRotate = false;
   private animationFrameId: number | null = null;
 
-  // Estado reactivo
   public state: WardrobeState;
 
   constructor(containerId: string) {
@@ -122,19 +149,26 @@ export class BabyStyle3D {
     if (!el) throw new Error(`Container #${containerId} not found`);
     this.container = el;
 
-    // Cargar o inicializar estado
+    this.fabricBumpMap = createFabricTexture();
     this.state = this.loadState();
 
-    // Three.js setup
+    // Setup Three.js
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(40, this.container.clientWidth / (this.container.clientHeight || 450), 0.1, 100);
-    this.camera.position.set(0, 1.35, 4.2);
+    const aspect = this.container.clientWidth / (this.container.clientHeight || 450);
+    this.camera = new THREE.PerspectiveCamera(38, aspect, 0.1, 50);
+    this.camera.position.set(0, 0.85, 3.8);
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      powerPreference: 'high-performance'
+    });
     this.renderer.setSize(this.container.clientWidth, this.container.clientHeight || 450);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
 
     this.container.innerHTML = '';
     this.container.appendChild(this.renderer.domElement);
@@ -142,9 +176,10 @@ export class BabyStyle3D {
     this.mannequinGroup = new THREE.Group();
     this.scene.add(this.mannequinGroup);
 
+    this.setupStudioEnvironment();
     this.setupLighting();
-    this.buildMannequin();
-    this.buildClothingLayers();
+    this.buildHighEndMannequin();
+    this.buildRealisticClothingLayers();
     this.setupInteractions();
     this.applyTheme(this.state.backgroundTheme);
     this.updateOutfitMeshes();
@@ -162,20 +197,20 @@ export class BabyStyle3D {
       if (raw) {
         const parsed = JSON.parse(raw);
         return {
-          items: parsed.items || DEFAULT_ITEMS,
-          currentOutfit: parsed.currentOutfit || { topId: 'top-1', bottomId: 'bot-1', shoesId: 'sho-1', accessoryId: null },
-          savedOutfits: parsed.savedOutfits || DEFAULT_SAVED_OUTFITS,
+          items: parsed.items || [],
+          currentOutfit: parsed.currentOutfit || { topId: null, bottomId: null, shoesId: null, accessoryId: null },
+          savedOutfits: parsed.savedOutfits || [],
           activeCategory: 'tops',
           backgroundTheme: parsed.backgroundTheme || 'studio'
         };
       }
     } catch (e) {
-      console.warn('Error loading wardrobe from localStorage:', e);
+      console.warn('Error loading wardrobe state:', e);
     }
     return {
-      items: DEFAULT_ITEMS,
-      currentOutfit: { topId: 'top-1', bottomId: 'bot-1', shoesId: 'sho-1', accessoryId: null },
-      savedOutfits: DEFAULT_SAVED_OUTFITS,
+      items: [],
+      currentOutfit: { topId: null, bottomId: null, shoesId: null, accessoryId: null },
+      savedOutfits: [],
       activeCategory: 'tops',
       backgroundTheme: 'studio'
     };
@@ -190,232 +225,450 @@ export class BabyStyle3D {
         backgroundTheme: this.state.backgroundTheme
       }));
     } catch (e) {
-      console.warn('Error saving wardrobe:', e);
+      console.warn('Error saving wardrobe state:', e);
     }
   }
 
+  private setupStudioEnvironment() {
+    // Generar mapa de reflejos de estudio suave para que el cromo brille como en la referencia
+    const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
+    pmremGenerator.compileEquirectangularShader();
+
+    const envScene = new THREE.Scene();
+    envScene.background = new THREE.Color(0xf5eedd);
+
+    // Softbox 1 (Frontal derecho)
+    const softbox1 = new THREE.Mesh(
+      new THREE.PlaneGeometry(8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })
+    );
+    softbox1.position.set(4, 5, 4);
+    softbox1.lookAt(0, 0, 0);
+    envScene.add(softbox1);
+
+    // Softbox 2 (Lateral izquierdo suave)
+    const softbox2 = new THREE.Mesh(
+      new THREE.PlaneGeometry(6, 6),
+      new THREE.MeshBasicMaterial({ color: 0xdfefff, side: THREE.DoubleSide })
+    );
+    softbox2.position.set(-5, 4, 2);
+    softbox2.lookAt(0, 0, 0);
+    envScene.add(softbox2);
+
+    const renderTarget = pmremGenerator.fromScene(envScene, 0.04);
+    this.scene.environment = renderTarget.texture;
+    pmremGenerator.dispose();
+  }
+
   private setupLighting() {
-    // Luz ambiental cálida
-    const ambientLight = new THREE.AmbientLight(0xfff6ed, 1.4);
+    // Luz ambiental suave de relleno
+    const ambientLight = new THREE.AmbientLight(0xfff5ea, 1.2);
     this.scene.add(ambientLight);
 
-    // Luz principal de estudio
-    const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
-    keyLight.position.set(3, 5, 4);
+    // Luz principal de estudio cálida con sombras de alta definición
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.4);
+    keyLight.position.set(2.8, 4.5, 3.8);
     keyLight.castShadow = true;
-    keyLight.shadow.mapSize.width = 1024;
-    keyLight.shadow.mapSize.height = 1024;
-    keyLight.shadow.bias = -0.001;
+    keyLight.shadow.mapSize.width = 2048;
+    keyLight.shadow.mapSize.height = 2048;
+    keyLight.shadow.bias = -0.0005;
+    keyLight.shadow.radius = 2.5;
     this.scene.add(keyLight);
 
-    // Luz de relleno suave
-    const fillLight = new THREE.DirectionalLight(0xe4edff, 1.0);
-    fillLight.position.set(-3, 3, 2);
+    // Luz de relleno azulada suave
+    const fillLight = new THREE.DirectionalLight(0xd9ebff, 1.1);
+    fillLight.position.set(-3.5, 3.0, 1.5);
     this.scene.add(fillLight);
 
-    // Luz de contorno trasera (rim light)
-    const rimLight = new THREE.DirectionalLight(0xffeedb, 1.2);
-    rimLight.position.set(0, 4, -4);
+    // Luz trasera de contorno (Rim light) para resaltar la silueta
+    const rimLight = new THREE.DirectionalLight(0xffeed9, 1.5);
+    rimLight.position.set(0, 4.0, -3.5);
     this.scene.add(rimLight);
   }
 
-  private buildMannequin() {
-    // Material del maniquí: acabado cerámico/plateado pulido suave como en la referencia
-    const mannequinMaterial = new THREE.MeshStandardMaterial({
-      color: 0xe8e5e0,
-      metalness: 0.25,
-      roughness: 0.35
+  private buildHighEndMannequin() {
+    // 1. Materiales de alta fidelidad: Cromo de alto brillo + Porcelana satinada suave
+    this.chromeMaterial = new THREE.MeshStandardMaterial({
+      color: 0xd8dcd9,
+      metalness: 0.95,
+      roughness: 0.12,
+      envMapIntensity: 1.8
     });
 
-    const jointMaterial = new THREE.MeshStandardMaterial({
-      color: 0x9e9992,
-      metalness: 0.4,
-      roughness: 0.3
+    this.porcelainMaterial = new THREE.MeshStandardMaterial({
+      color: 0xf5f0eb,
+      metalness: 0.08,
+      roughness: 0.38,
+      envMapIntensity: 0.8
     });
 
-    // 1. Pedestal / Suelo circular
-    const pedestalGeo = new THREE.CylinderGeometry(1.3, 1.4, 0.08, 48);
-    const pedestalMat = new THREE.MeshStandardMaterial({ color: 0xede6de, roughness: 0.6 });
-    const pedestal = new THREE.Mesh(pedestalGeo, pedestalMat);
-    pedestal.position.y = -1.1;
-    pedestal.receiveShadow = true;
-    this.mannequinGroup.add(pedestal);
+    this.jointMaterial = new THREE.MeshStandardMaterial({
+      color: 0x9fa4a2,
+      metalness: 0.88,
+      roughness: 0.22,
+      envMapIntensity: 1.4
+    });
 
-    // 2. Cabeza del bebé estilizada
-    const headGeo = new THREE.SphereGeometry(0.38, 32, 32);
-    this.headMesh = new THREE.Mesh(headGeo, mannequinMaterial);
-    this.headMesh.position.y = 1.35;
-    this.headMesh.castShadow = true;
-    this.mannequinGroup.add(this.headMesh);
-
-    // Cara estilizada (visera ovalada)
-    const facePlateGeo = new THREE.SphereGeometry(0.35, 24, 24, 0, Math.PI, 0, Math.PI * 0.6);
-    const facePlateMat = new THREE.MeshStandardMaterial({ color: 0xc8c2b9, roughness: 0.25, metalness: 0.5 });
-    const facePlate = new THREE.Mesh(facePlateGeo, facePlateMat);
-    facePlate.rotation.x = Math.PI * 0.15;
-    facePlate.position.set(0, 1.37, 0.08);
-    this.mannequinGroup.add(facePlate);
-
-    // Cuello
-    const neckGeo = new THREE.CylinderGeometry(0.12, 0.15, 0.16, 24);
-    const neck = new THREE.Mesh(neckGeo, jointMaterial);
-    neck.position.y = 1.05;
-    this.mannequinGroup.add(neck);
-
-    // 3. Torso de proporciones infantiles
-    const torsoGeo = new THREE.CylinderGeometry(0.34, 0.38, 0.72, 32);
-    this.torsoMesh = new THREE.Mesh(torsoGeo, mannequinMaterial);
-    this.torsoMesh.position.y = 0.65;
-    this.torsoMesh.castShadow = true;
-    this.mannequinGroup.add(this.torsoMesh);
-
-    // 4. Brazos articulados
-    // Brazo izquierdo
-    const armGeo = new THREE.CylinderGeometry(0.09, 0.08, 0.5, 24);
-    this.leftArmMesh = new THREE.Mesh(armGeo, mannequinMaterial);
-    this.leftArmMesh.position.set(0.48, 0.65, 0);
-    this.leftArmMesh.rotation.z = -0.25;
-    this.leftArmMesh.castShadow = true;
-    this.mannequinGroup.add(this.leftArmMesh);
-
-    // Brazo derecho
-    this.rightArmMesh = new THREE.Mesh(armGeo, mannequinMaterial);
-    this.rightArmMesh.position.set(-0.48, 0.65, 0);
-    this.rightArmMesh.rotation.z = 0.25;
-    this.rightArmMesh.castShadow = true;
-    this.mannequinGroup.add(this.rightArmMesh);
-
-    // Manitos de bola suave
-    const handGeo = new THREE.SphereGeometry(0.08, 16, 16);
-    const leftHand = new THREE.Mesh(handGeo, mannequinMaterial);
-    leftHand.position.set(0.55, 0.36, 0);
-    this.mannequinGroup.add(leftHand);
-
-    const rightHand = new THREE.Mesh(handGeo, mannequinMaterial);
-    rightHand.position.set(-0.55, 0.36, 0);
-    this.mannequinGroup.add(rightHand);
-
-    // 5. Caderas
-    const hipsGeo = new THREE.SphereGeometry(0.36, 32, 16);
-    const hips = new THREE.Mesh(hipsGeo, mannequinMaterial);
-    hips.scale.set(1.0, 0.75, 0.95);
-    hips.position.y = 0.22;
-    this.mannequinGroup.add(hips);
-
-    // 6. Piernas de bebé
-    const legGeo = new THREE.CylinderGeometry(0.12, 0.1, 0.62, 24);
-    this.leftLegMesh = new THREE.Mesh(legGeo, mannequinMaterial);
-    this.leftLegMesh.position.set(0.2, -0.22, 0);
-    this.leftLegMesh.castShadow = true;
-    this.mannequinGroup.add(this.leftLegMesh);
-
-    this.rightLegMesh = new THREE.Mesh(legGeo, mannequinMaterial);
-    this.rightLegMesh.position.set(-0.2, -0.22, 0);
-    this.rightLegMesh.castShadow = true;
-    this.mannequinGroup.add(this.rightLegMesh);
-
-    // Pies
-    const footGeo = new THREE.BoxGeometry(0.14, 0.1, 0.26);
-    const leftFoot = new THREE.Mesh(footGeo, mannequinMaterial);
-    leftFoot.position.set(0.2, -0.58, 0.05);
-    this.mannequinGroup.add(leftFoot);
-
-    const rightFoot = new THREE.Mesh(footGeo, mannequinMaterial);
-    rightFoot.position.set(-0.2, -0.58, 0.05);
-    this.mannequinGroup.add(rightFoot);
-  }
-
-  private buildClothingLayers() {
-    // --- Capa Superior (Tops) ---
-    this.topLayer = new THREE.Group();
-
-    // Torso de la prenda (polera/suéter/body)
-    const topTorsoGeo = new THREE.CylinderGeometry(0.365, 0.405, 0.74, 32);
-    const topMat = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
+    // 2. Pedestal y Sombra de Contacto
+    const pedestalGeo = new THREE.CylinderGeometry(1.4, 1.48, 0.04, 64);
+    const pedestalMat = new THREE.MeshStandardMaterial({
+      color: 0xf4eee7,
       roughness: 0.75,
       metalness: 0.05
     });
-    this.topTorsoMesh = new THREE.Mesh(topTorsoGeo, topMat);
+    const pedestal = new THREE.Mesh(pedestalGeo, pedestalMat);
+    pedestal.position.y = -1.02;
+    pedestal.receiveShadow = true;
+    this.mannequinGroup.add(pedestal);
+
+    // Sombra de contacto suave en el suelo
+    const shadowGeo = new THREE.PlaneGeometry(2.4, 2.4);
+    const shadowMat = new THREE.MeshBasicMaterial({
+      map: createContactShadowTexture(),
+      transparent: true,
+      depthWrite: false
+    });
+    const contactShadow = new THREE.Mesh(shadowGeo, shadowMat);
+    contactShadow.rotation.x = -Math.PI / 2;
+    contactShadow.position.y = -0.99;
+    this.mannequinGroup.add(contactShadow);
+
+    // 3. Cabeza Estilizada de Maniquí de Alta Gama (Casco Cromo + Placa Visor)
+    const headGroup = new THREE.Group();
+    headGroup.position.y = 1.32;
+
+    // Casco exterior cromo pulido
+    const outerDomeGeo = new THREE.SphereGeometry(0.36, 48, 48);
+    this.chromeShell = new THREE.Mesh(outerDomeGeo, this.chromeMaterial);
+    this.chromeShell.castShadow = true;
+    headGroup.add(this.chromeShell);
+
+    // Visor frontal / placa de rostro satinada
+    const facePlateGeo = new THREE.SphereGeometry(0.345, 36, 36, 0, Math.PI, 0, Math.PI * 0.72);
+    this.facePlate = new THREE.Mesh(facePlateGeo, this.porcelainMaterial);
+    this.facePlate.rotation.x = Math.PI * 0.12;
+    this.facePlate.position.set(0, 0.01, 0.05);
+    headGroup.add(this.facePlate);
+
+    // Borde bisel cromo que enmarca la cara
+    const visorRimGeo = new THREE.TorusGeometry(0.31, 0.02, 24, 64, Math.PI * 1.05);
+    const visorRim = new THREE.Mesh(visorRimGeo, this.chromeMaterial);
+    visorRim.rotation.x = Math.PI * 0.62;
+    visorRim.position.set(0, 0.02, 0.2);
+    headGroup.add(visorRim);
+
+    // Auriculares / conectores laterales de las orejas
+    const earGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.05, 32);
+    const leftEar = new THREE.Mesh(earGeo, this.chromeMaterial);
+    leftEar.rotation.z = Math.PI / 2;
+    leftEar.position.set(0.36, 0.01, 0);
+    headGroup.add(leftEar);
+
+    const rightEar = new THREE.Mesh(earGeo, this.chromeMaterial);
+    rightEar.rotation.z = Math.PI / 2;
+    rightEar.position.set(-0.36, 0.01, 0);
+    headGroup.add(rightEar);
+
+    this.headMesh = this.chromeShell;
+    this.mannequinGroup.add(headGroup);
+
+    // 4. Cuello articulado con rótula esférica
+    const neckJointGeo = new THREE.SphereGeometry(0.13, 24, 24);
+    const neckJoint = new THREE.Mesh(neckJointGeo, this.jointMaterial);
+    neckJoint.position.y = 1.0;
+    this.mannequinGroup.add(neckJoint);
+
+    // 5. Torso del maniquí con curvas anatómicas
+    const torsoGeo = new THREE.CylinderGeometry(0.32, 0.36, 0.68, 36);
+    this.torsoMesh = new THREE.Mesh(torsoGeo, this.porcelainMaterial);
+    this.torsoMesh.position.y = 0.64;
+    this.torsoMesh.castShadow = true;
+    this.torsoMesh.receiveShadow = true;
+    this.mannequinGroup.add(this.torsoMesh);
+
+    // Clavículas / hombros
+    const shoulderBeamGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.72, 24);
+    const shoulderBeam = new THREE.Mesh(shoulderBeamGeo, this.chromeMaterial);
+    shoulderBeam.rotation.z = Math.PI / 2;
+    shoulderBeam.position.y = 0.88;
+    this.mannequinGroup.add(shoulderBeam);
+
+    // 6. Brazos de Cromo con Rótulas de Muñeca y Dedos Esculpidos
+    this.buildChromeArm(true);
+    this.buildChromeArm(false);
+
+    // 7. Caderas / Pelvis articulada
+    const pelvisGeo = new THREE.SphereGeometry(0.35, 32, 24);
+    const pelvis = new THREE.Mesh(pelvisGeo, this.porcelainMaterial);
+    pelvis.scale.set(1.0, 0.7, 0.9);
+    pelvis.position.y = 0.22;
+    pelvis.castShadow = true;
+    this.mannequinGroup.add(pelvis);
+
+    // Rótulas de cadera cromo
+    const hipJointGeo = new THREE.SphereGeometry(0.11, 24, 24);
+    const leftHipJoint = new THREE.Mesh(hipJointGeo, this.jointMaterial);
+    leftHipJoint.position.set(0.18, 0.15, 0);
+    this.mannequinGroup.add(leftHipJoint);
+
+    const rightHipJoint = new THREE.Mesh(hipJointGeo, this.jointMaterial);
+    rightHipJoint.position.set(-0.18, 0.15, 0);
+    this.mannequinGroup.add(rightHipJoint);
+
+    // 8. Piernas y Pies de Maniquí con acabado Cromo
+    this.buildChromeLeg(true);
+    this.buildChromeLeg(false);
+  }
+
+  private buildChromeArm(isLeft: boolean) {
+    const sign = isLeft ? 1 : -1;
+    const armGroup = new THREE.Group();
+    armGroup.position.set(sign * 0.44, 0.88, 0);
+
+    // Rótula de hombro
+    const shoulderBallGeo = new THREE.SphereGeometry(0.1, 24, 24);
+    const shoulderBall = new THREE.Mesh(shoulderBallGeo, this.jointMaterial);
+    armGroup.add(shoulderBall);
+
+    // Brazo superior
+    const upperArmGeo = new THREE.CylinderGeometry(0.08, 0.07, 0.32, 24);
+    const upperArm = new THREE.Mesh(upperArmGeo, this.chromeMaterial);
+    upperArm.position.set(sign * 0.06, -0.16, 0);
+    upperArm.rotation.z = sign * -0.25;
+    upperArm.castShadow = true;
+    armGroup.add(upperArm);
+
+    // Rótula de codo
+    const elbowBallGeo = new THREE.SphereGeometry(0.075, 24, 24);
+    const elbowBall = new THREE.Mesh(elbowBallGeo, this.jointMaterial);
+    elbowBall.position.set(sign * 0.11, -0.32, 0);
+    armGroup.add(elbowBall);
+
+    // Antebrazo cónico
+    const forearmGeo = new THREE.CylinderGeometry(0.07, 0.055, 0.3, 24);
+    const forearm = new THREE.Mesh(forearmGeo, this.chromeMaterial);
+    forearm.position.set(sign * 0.13, -0.47, 0.04);
+    forearm.rotation.z = sign * -0.15;
+    forearm.castShadow = true;
+    armGroup.add(forearm);
+
+    // Mano delicada de bebé estilizada
+    const palmGeo = new THREE.BoxGeometry(0.06, 0.08, 0.04);
+    const palm = new THREE.Mesh(palmGeo, this.chromeMaterial);
+    palm.position.set(sign * 0.15, -0.63, 0.05);
+    palm.rotation.y = sign * 0.2;
+    armGroup.add(palm);
+
+    this.mannequinGroup.add(armGroup);
+  }
+
+  private buildChromeLeg(isLeft: boolean) {
+    const sign = isLeft ? 1 : -1;
+    const legGroup = new THREE.Group();
+    legGroup.position.set(sign * 0.18, 0.15, 0);
+
+    // Muslo
+    const thighGeo = new THREE.CylinderGeometry(0.12, 0.095, 0.38, 24);
+    const thigh = new THREE.Mesh(thighGeo, this.chromeMaterial);
+    thigh.position.set(0, -0.2, 0);
+    thigh.castShadow = true;
+    legGroup.add(thigh);
+
+    // Rodilla esférica
+    const kneeGeo = new THREE.SphereGeometry(0.088, 24, 24);
+    const knee = new THREE.Mesh(kneeGeo, this.jointMaterial);
+    knee.position.set(0, -0.4, 0.01);
+    legGroup.add(knee);
+
+    // Pantorrilla
+    const calfGeo = new THREE.CylinderGeometry(0.095, 0.07, 0.38, 24);
+    const calf = new THREE.Mesh(calfGeo, this.chromeMaterial);
+    calf.position.set(0, -0.6, 0);
+    calf.castShadow = true;
+    legGroup.add(calf);
+
+    // Pie detallado con suela plana descansando en el pedestal
+    const footGroup = new THREE.Group();
+    footGroup.position.set(0, -0.84, 0.05);
+
+    const footMeshGeo = new THREE.BoxGeometry(0.12, 0.08, 0.24);
+    const footMesh = new THREE.Mesh(footMeshGeo, this.chromeMaterial);
+    footMesh.castShadow = true;
+    footGroup.add(footMesh);
+
+    legGroup.add(footGroup);
+    this.mannequinGroup.add(legGroup);
+  }
+
+  private buildRealisticClothingLayers() {
+    // --- Capa Superior (Tops) con Textura, Cuello Redondo y Dobladillo ---
+    this.topLayer = new THREE.Group();
+
+    const topFabricMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.85,
+      metalness: 0.02,
+      bumpMap: this.fabricBumpMap,
+      bumpScale: 0.04
+    });
+
+    // Cuerpo de la polera con volumen drapeado
+    const topTorsoGeo = new THREE.CylinderGeometry(0.355, 0.395, 0.69, 36);
+    this.topTorsoMesh = new THREE.Mesh(topTorsoGeo, topFabricMat);
     this.topTorsoMesh.position.y = 0.65;
     this.topTorsoMesh.castShadow = true;
     this.topLayer.add(this.topTorsoMesh);
 
-    // Mangas
-    const sleeveGeo = new THREE.CylinderGeometry(0.115, 0.105, 0.32, 24);
-    this.topSleeveLeft = new THREE.Mesh(sleeveGeo, topMat);
-    this.topSleeveLeft.position.set(0.44, 0.74, 0);
-    this.topSleeveLeft.rotation.z = -0.25;
+    // Cuello redondo de canalé (collar rib)
+    const collarGeo = new THREE.TorusGeometry(0.24, 0.03, 16, 48);
+    this.topCollarRing = new THREE.Mesh(collarGeo, topFabricMat);
+    this.topCollarRing.rotation.x = Math.PI / 2;
+    this.topCollarRing.position.set(0, 0.99, 0);
+    this.topLayer.add(this.topCollarRing);
+
+    // Dobladillo inferior
+    const hemGeo = new THREE.TorusGeometry(0.395, 0.025, 16, 48);
+    this.topHemRing = new THREE.Mesh(hemGeo, topFabricMat);
+    this.topHemRing.rotation.x = Math.PI / 2;
+    this.topHemRing.position.set(0, 0.31, 0);
+    this.topLayer.add(this.topHemRing);
+
+    // Mangas con dobladillo enrollado
+    const sleeveGeo = new THREE.CylinderGeometry(0.11, 0.10, 0.26, 24);
+    this.topSleeveLeft = new THREE.Mesh(sleeveGeo, topFabricMat);
+    this.topSleeveLeft.position.set(0.44, 0.76, 0);
+    this.topSleeveLeft.rotation.z = -0.28;
+    this.topSleeveLeft.castShadow = true;
     this.topLayer.add(this.topSleeveLeft);
 
-    this.topSleeveRight = new THREE.Mesh(sleeveGeo, topMat);
-    this.topSleeveRight.position.set(-0.44, 0.74, 0);
-    this.topSleeveRight.rotation.z = 0.25;
+    const cuffGeo = new THREE.TorusGeometry(0.1, 0.018, 16, 32);
+    this.topCuffLeft = new THREE.Mesh(cuffGeo, topFabricMat);
+    this.topCuffLeft.position.set(0.48, 0.65, 0);
+    this.topCuffLeft.rotation.z = -0.28;
+    this.topLayer.add(this.topCuffLeft);
+
+    this.topSleeveRight = new THREE.Mesh(sleeveGeo, topFabricMat);
+    this.topSleeveRight.position.set(-0.44, 0.76, 0);
+    this.topSleeveRight.rotation.z = 0.28;
+    this.topSleeveRight.castShadow = true;
     this.topLayer.add(this.topSleeveRight);
 
+    this.topCuffRight = new THREE.Mesh(cuffGeo, topFabricMat);
+    this.topCuffRight.position.set(-0.48, 0.65, 0);
+    this.topCuffRight.rotation.z = 0.28;
+    this.topLayer.add(this.topCuffRight);
+
+    this.topLayer.visible = false;
     this.mannequinGroup.add(this.topLayer);
 
-    // --- Capa Inferior (Bottoms) ---
+    // --- Capa Inferior (Bottoms: Falda Denim / Pantalón con Pretina y Botón) ---
     this.bottomLayer = new THREE.Group();
 
-    // Cintura / Falda / Pantalón superior
-    const bottomHipsGeo = new THREE.CylinderGeometry(0.395, 0.45, 0.38, 32);
     const bottomMat = new THREE.MeshStandardMaterial({
       color: 0x3d5c7a,
-      roughness: 0.8,
-      metalness: 0.05
+      roughness: 0.88,
+      metalness: 0.02,
+      bumpMap: this.fabricBumpMap,
+      bumpScale: 0.06
     });
+
+    // Pretina de cintura con costura
+    const waistbandGeo = new THREE.CylinderGeometry(0.4, 0.41, 0.09, 36);
+    this.bottomWaistband = new THREE.Mesh(waistbandGeo, bottomMat);
+    this.bottomWaistband.position.y = 0.33;
+    this.bottomLayer.add(this.bottomWaistband);
+
+    // Botón metálico de vaquero/mezclilla
+    const buttonGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.015, 16);
+    const buttonMat = new THREE.MeshStandardMaterial({ color: 0xc8aa6e, metalness: 0.9, roughness: 0.2 });
+    this.bottomButton = new THREE.Mesh(buttonGeo, buttonMat);
+    this.bottomButton.rotation.x = Math.PI / 2;
+    this.bottomButton.position.set(0, 0.33, 0.41);
+    this.bottomLayer.add(this.bottomButton);
+
+    // Falda / Cuerpo del pantalón
+    const bottomHipsGeo = new THREE.CylinderGeometry(0.41, 0.46, 0.35, 36);
     this.bottomHipsMesh = new THREE.Mesh(bottomHipsGeo, bottomMat);
-    this.bottomHipsMesh.position.y = 0.22;
+    this.bottomHipsMesh.position.y = 0.14;
     this.bottomHipsMesh.castShadow = true;
     this.bottomLayer.add(this.bottomHipsMesh);
 
-    // Piernas de pantalón / shorts
-    const bottomLegGeo = new THREE.CylinderGeometry(0.145, 0.13, 0.34, 24);
+    // Piernas de pantalón
+    const bottomLegGeo = new THREE.CylinderGeometry(0.14, 0.12, 0.38, 24);
     this.bottomLegLeft = new THREE.Mesh(bottomLegGeo, bottomMat);
-    this.bottomLegLeft.position.set(0.2, -0.06, 0);
+    this.bottomLegLeft.position.set(0.18, -0.16, 0);
+    this.bottomLegLeft.castShadow = true;
     this.bottomLayer.add(this.bottomLegLeft);
 
     this.bottomLegRight = new THREE.Mesh(bottomLegGeo, bottomMat);
-    this.bottomLegRight.position.set(-0.2, -0.06, 0);
+    this.bottomLegRight.position.set(-0.18, -0.16, 0);
+    this.bottomLegRight.castShadow = true;
     this.bottomLayer.add(this.bottomLegRight);
 
+    this.bottomLayer.visible = false;
     this.mannequinGroup.add(this.bottomLayer);
 
-    // --- Capa Calzado (Shoes) ---
+    // --- Capa Calzado (Zapatillas de Diseñador con Suela Blanca y Cordones) ---
     this.shoesLayer = new THREE.Group();
-    const shoeGeo = new THREE.BoxGeometry(0.165, 0.13, 0.29);
-    const shoeMat = new THREE.MeshStandardMaterial({
+
+    const shoeUpperMat = new THREE.MeshStandardMaterial({
       color: 0xcac5bf,
-      roughness: 0.65,
-      metalness: 0.1
+      roughness: 0.6,
+      metalness: 0.05
     });
 
-    this.shoeLeft = new THREE.Mesh(shoeGeo, shoeMat);
-    this.shoeLeft.position.set(0.2, -0.57, 0.05);
-    this.shoeLeft.castShadow = true;
-    this.shoesLayer.add(this.shoeLeft);
+    const shoeSoleMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.5,
+      metalness: 0.05
+    });
 
-    this.shoeRight = new THREE.Mesh(shoeGeo, shoeMat);
-    this.shoeRight.position.set(-0.2, -0.57, 0.05);
-    this.shoeRight.castShadow = true;
-    this.shoesLayer.add(this.shoeRight);
+    // Pie izquierdo: Empeine + Suela de goma
+    this.shoeUpperLeft = new THREE.Mesh(new THREE.BoxGeometry(0.145, 0.11, 0.25), shoeUpperMat);
+    this.shoeUpperLeft.position.set(0.18, -0.83, 0.05);
+    this.shoeUpperLeft.castShadow = true;
+    this.shoesLayer.add(this.shoeUpperLeft);
 
+    this.shoeSoleLeft = new THREE.Mesh(new THREE.BoxGeometry(0.155, 0.035, 0.27), shoeSoleMat);
+    this.shoeSoleLeft.position.set(0.18, -0.89, 0.05);
+    this.shoeSoleLeft.castShadow = true;
+    this.shoesLayer.add(this.shoeSoleLeft);
+
+    // Pie derecho: Empeine + Suela de goma
+    this.shoeUpperRight = new THREE.Mesh(new THREE.BoxGeometry(0.145, 0.11, 0.25), shoeUpperMat);
+    this.shoeUpperRight.position.set(-0.18, -0.83, 0.05);
+    this.shoeUpperRight.castShadow = true;
+    this.shoesLayer.add(this.shoeUpperRight);
+
+    this.shoeSoleRight = new THREE.Mesh(new THREE.BoxGeometry(0.155, 0.035, 0.27), shoeSoleMat);
+    this.shoeSoleRight.position.set(-0.18, -0.89, 0.05);
+    this.shoeSoleRight.castShadow = true;
+    this.shoesLayer.add(this.shoeSoleRight);
+
+    this.shoesLayer.visible = false;
     this.mannequinGroup.add(this.shoesLayer);
 
-    // --- Capa Accesorios (Gorro) ---
+    // --- Capa Accesorio (Gorro Beanie con pompón) ---
     this.accessoryLayer = new THREE.Group();
-    const hatGeo = new THREE.SphereGeometry(0.405, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.55);
     const hatMat = new THREE.MeshStandardMaterial({
       color: 0xe8ded1,
       roughness: 0.9,
-      metalness: 0.05
+      metalness: 0.02,
+      bumpMap: this.fabricBumpMap,
+      bumpScale: 0.08
     });
+
+    const hatGeo = new THREE.SphereGeometry(0.38, 36, 18, 0, Math.PI * 2, 0, Math.PI * 0.52);
     this.hatMesh = new THREE.Mesh(hatGeo, hatMat);
     this.hatMesh.position.y = 1.42;
     this.accessoryLayer.add(this.hatMesh);
-    this.accessoryLayer.visible = false;
 
+    const pomPomGeo = new THREE.SphereGeometry(0.08, 16, 16);
+    this.hatPomPom = new THREE.Mesh(pomPomGeo, hatMat);
+    this.hatPomPom.position.set(0, 1.82, 0);
+    this.accessoryLayer.add(this.hatPomPom);
+
+    this.accessoryLayer.visible = false;
     this.mannequinGroup.add(this.accessoryLayer);
   }
 
@@ -439,12 +692,10 @@ export class BabyStyle3D {
       this.isDragging = false;
     };
 
-    // Eventos Mouse
     el.addEventListener('mousedown', (e) => onPointerDown(e.clientX, e.clientY));
     window.addEventListener('mousemove', (e) => onPointerMove(e.clientX, e.clientY));
     window.addEventListener('mouseup', onPointerUp);
 
-    // Eventos Touch (Móvil y Android WebView)
     el.addEventListener('touchstart', (e) => {
       if (e.touches.length === 1) {
         onPointerDown(e.touches[0].clientX, e.touches[0].clientY);
@@ -460,13 +711,9 @@ export class BabyStyle3D {
     window.addEventListener('touchend', onPointerUp);
   }
 
-  public toggleAutoRotate() {
+  public toggleAutoRotate(): boolean {
     this.autoRotate = !this.autoRotate;
     return this.autoRotate;
-  }
-
-  public rotateBy(degrees: number) {
-    this.targetRotationY += (degrees * Math.PI) / 180;
   }
 
   public applyTheme(theme: 'studio' | 'nursery' | 'minimal') {
@@ -487,14 +734,18 @@ export class BabyStyle3D {
     if (topItem) {
       this.topLayer.visible = true;
       const color = new THREE.Color(topItem.color || '#ffffff');
-      (this.topTorsoMesh.material as THREE.MeshStandardMaterial).color = color;
+      const mat = this.topTorsoMesh.material as THREE.MeshStandardMaterial;
+      mat.color = color;
+      (this.topCollarRing.material as THREE.MeshStandardMaterial).color = color;
+      (this.topHemRing.material as THREE.MeshStandardMaterial).color = color;
       (this.topSleeveLeft.material as THREE.MeshStandardMaterial).color = color;
       (this.topSleeveRight.material as THREE.MeshStandardMaterial).color = color;
+      (this.topCuffLeft.material as THREE.MeshStandardMaterial).color = color;
+      (this.topCuffRight.material as THREE.MeshStandardMaterial).color = color;
 
-      // Adaptar forma según subType
       if (topItem.subType === 'sweater' || topItem.subType === 'jacket') {
-        this.topSleeveLeft.scale.set(1.15, 1.4, 1.15);
-        this.topSleeveRight.scale.set(1.15, 1.4, 1.15);
+        this.topSleeveLeft.scale.set(1.18, 1.4, 1.18);
+        this.topSleeveRight.scale.set(1.18, 1.4, 1.18);
       } else {
         this.topSleeveLeft.scale.set(1.0, 1.0, 1.0);
         this.topSleeveRight.scale.set(1.0, 1.0, 1.0);
@@ -508,13 +759,13 @@ export class BabyStyle3D {
     if (botItem) {
       this.bottomLayer.visible = true;
       const color = new THREE.Color(botItem.color || '#3d5c7a');
+      (this.bottomWaistband.material as THREE.MeshStandardMaterial).color = color;
       (this.bottomHipsMesh.material as THREE.MeshStandardMaterial).color = color;
       (this.bottomLegLeft.material as THREE.MeshStandardMaterial).color = color;
       (this.bottomLegRight.material as THREE.MeshStandardMaterial).color = color;
 
-      // Adaptar si es falda o pantalón
       if (botItem.subType === 'skirt') {
-        this.bottomHipsMesh.scale.set(1.2, 1.15, 1.2);
+        this.bottomHipsMesh.scale.set(1.18, 1.25, 1.18);
         this.bottomLegLeft.visible = false;
         this.bottomLegRight.visible = false;
       } else {
@@ -531,8 +782,8 @@ export class BabyStyle3D {
     if (shoeItem) {
       this.shoesLayer.visible = true;
       const color = new THREE.Color(shoeItem.color || '#cac5bf');
-      (this.shoeLeft.material as THREE.MeshStandardMaterial).color = color;
-      (this.shoeRight.material as THREE.MeshStandardMaterial).color = color;
+      (this.shoeUpperLeft.material as THREE.MeshStandardMaterial).color = color;
+      (this.shoeUpperRight.material as THREE.MeshStandardMaterial).color = color;
     } else {
       this.shoesLayer.visible = false;
     }
@@ -543,6 +794,7 @@ export class BabyStyle3D {
       this.accessoryLayer.visible = true;
       const color = new THREE.Color(accItem.color || '#e8ded1');
       (this.hatMesh.material as THREE.MeshStandardMaterial).color = color;
+      (this.hatPomPom.material as THREE.MeshStandardMaterial).color = color;
     } else {
       this.accessoryLayer.visible = false;
     }
@@ -599,7 +851,7 @@ export class BabyStyle3D {
   public addCustomClothing(item: Omit<ClothingItem, 'id' | 'isCustom'>): ClothingItem {
     const newItem: ClothingItem = {
       ...item,
-      id: `custom-${Date.now()}`,
+      id: `item-${Date.now()}`,
       isCustom: true
     };
     this.state.items.unshift(newItem);
@@ -609,19 +861,29 @@ export class BabyStyle3D {
     return newItem;
   }
 
+  public deleteClothing(itemId: string) {
+    this.state.items = this.state.items.filter(i => i.id !== itemId);
+    if (this.state.currentOutfit.topId === itemId) this.state.currentOutfit.topId = null;
+    if (this.state.currentOutfit.bottomId === itemId) this.state.currentOutfit.bottomId = null;
+    if (this.state.currentOutfit.shoesId === itemId) this.state.currentOutfit.shoesId = null;
+    if (this.state.currentOutfit.accessoryId === itemId) this.state.currentOutfit.accessoryId = null;
+    this.updateOutfitMeshes();
+    this.saveState();
+  }
+
   private animate() {
     this.animationFrameId = requestAnimationFrame(this.animate);
 
     if (this.autoRotate) {
-      this.targetRotationY += 0.008;
+      this.targetRotationY += 0.007;
     }
 
     // Interpolación suave (damping)
     this.mannequinGroup.rotation.y += (this.targetRotationY - this.mannequinGroup.rotation.y) * 0.1;
 
-    // Sutil respiración / balanceo
-    const time = Date.now() * 0.0018;
-    this.headMesh.position.y = 1.35 + Math.sin(time) * 0.008;
+    // Sutil respiración realista
+    const time = Date.now() * 0.0016;
+    this.mannequinGroup.position.y = Math.sin(time) * 0.006;
 
     this.renderer.render(this.scene, this.camera);
   }

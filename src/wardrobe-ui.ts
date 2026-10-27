@@ -2,18 +2,15 @@ import { BabyStyle3D, ClothingCategory, ClothingItem } from './wardrobe3d';
 
 let wardrobeApp: BabyStyle3D | null = null;
 
-// Inicializa el probador 3D y su interfaz
 export function initWardrobe3D() {
   const container = document.getElementById('wardrobe-root');
   if (!container) return;
 
-  // Si ya está inicializado, solo refrescar vistas
   if (wardrobeApp) {
     renderWardrobeUI();
     return;
   }
 
-  // Estructura HTML del probador 3D inspirada en BabyStyle 3D
   container.innerHTML = `
     <div class="wardrobe-container">
       <!-- Barra Superior -->
@@ -22,19 +19,19 @@ export function initWardrobe3D() {
           <span class="wardrobe-icon">👗</span>
           <div>
             <h2>BabyStyle 3D</h2>
-            <small>Probador virtual y catálogo inteligente</small>
+            <small>Probador virtual y catálogo de vestuario</small>
           </div>
         </div>
         <div class="wardrobe-top-actions">
-          <button id="btn-theme-bg" class="btn-tool" title="Cambiar Fondo">🎨 Fondo</button>
-          <button id="btn-auto-rotate" class="btn-tool" title="Girar 360°">🔄 Auto 360°</button>
-          <button id="btn-clear-outfit" class="btn-tool" title="Desvestir">🧹 Limpiar</button>
+          <button id="btn-theme-bg" class="btn-tool" title="Cambiar Fondo de Estudio">🎨 Fondo</button>
+          <button id="btn-auto-rotate" class="btn-tool" title="Giro 360°">🔄 Auto 360°</button>
+          <button id="btn-clear-outfit" class="btn-tool" title="Desvestir maniquí">🧹 Desvestir</button>
         </div>
       </header>
 
       <!-- Zona Principal: Categorías + Canvas 3D + Mis Combinaciones -->
       <div class="wardrobe-main-layout">
-        <!-- Selector Lateral / Superior de Categorías -->
+        <!-- Selector Lateral de Categorías -->
         <aside class="wardrobe-categories">
           <button class="cat-btn active" data-cat="tops">
             <span class="cat-icon">👕</span>
@@ -54,11 +51,10 @@ export function initWardrobe3D() {
           </button>
         </aside>
 
-        <!-- Visor 3D Interactivo -->
+        <!-- Visor 3D Interactivo de Alta Fidelidad -->
         <main class="wardrobe-3d-stage">
           <div id="three-stage" class="three-viewport"></div>
           
-          <!-- Indicador flotante de rotación -->
           <div class="rotate-hint" id="rotate-hint">
             <span class="rotate-arrow">⤹ 360° ⤸</span>
             <span>Arrastra para girar al bebé</span>
@@ -75,7 +71,7 @@ export function initWardrobe3D() {
         </aside>
       </div>
 
-      <!-- Carrusel Inferior de Prendas -->
+      <!-- Carrusel Inferior de Prendas Reales -->
       <footer class="wardrobe-carousel-tray">
         <div class="carousel-header">
           <span id="carousel-category-title" class="cat-current-name">Tops & Poleras</span>
@@ -92,7 +88,7 @@ export function initWardrobe3D() {
           <h2>Añadir Ropa al Armario 3D</h2>
           <button class="x" id="btn-close-upload-modal">×</button>
         </div>
-        <p class="note">Sube o toma una foto de la prenda extendida sobre una mesa. La IA de Bichito detectará el color y la categoría en segundos.</p>
+        <p class="note">Toma una foto de la prenda extendida sobre una mesa. La IA detectará su color y categoría para armar tu catálogo real.</p>
         
         <div class="upload-dropzone" id="dropzone">
           <input type="file" id="clothing-file-input" accept="image/*" class="hide" />
@@ -136,7 +132,6 @@ export function initWardrobe3D() {
     </dialog>
   `;
 
-  // Inicializar instancia de Three.js
   wardrobeApp = new BabyStyle3D('three-stage');
 
   setupEventListeners();
@@ -157,7 +152,7 @@ function setupEventListeners() {
     });
   });
 
-  // Botón Cambiar Fondo
+  // Botón Fondo
   document.getElementById('btn-theme-bg')?.addEventListener('click', () => {
     if (!wardrobeApp) return;
     const current = wardrobeApp.state.backgroundTheme;
@@ -177,12 +172,18 @@ function setupEventListeners() {
   document.getElementById('btn-clear-outfit')?.addEventListener('click', () => {
     wardrobeApp?.clearOutfit();
     renderWardrobeUI();
+    showWardrobeToast('Maniquí desvestido');
   });
 
   // Guardar Look
   document.getElementById('btn-save-look-trigger')?.addEventListener('click', () => {
     if (!wardrobeApp) return;
-    const name = prompt('Nombre para este conjunto (ej. Ropa de paseo, Pijama):');
+    const { topId, bottomId, shoesId } = wardrobeApp.state.currentOutfit;
+    if (!topId && !bottomId && !shoesId) {
+      showWardrobeToast('Primero viste al bebé con al menos una prenda antes de guardar el look.');
+      return;
+    }
+    const name = prompt('Nombre para este conjunto (ej. Ropa de paseo, Pijama de noche):');
     if (name) {
       wardrobeApp.saveCurrentOutfit(name);
       renderWardrobeUI();
@@ -229,7 +230,6 @@ function setupEventListeners() {
         uploadPrompt.classList.add('hide');
       }
 
-      // Analizar con Gemini
       if (aiStatus) aiStatus.classList.remove('hide');
       try {
         const res = await fetch('/api/analyze-clothing', {
@@ -277,7 +277,7 @@ function setupEventListeners() {
 
     modal?.close();
     renderWardrobeUI();
-    showWardrobeToast(`¡"${name}" añadida y probada en el bebé!`);
+    showWardrobeToast(`¡"${name}" guardada y puesta en el bebé!`);
   });
 }
 
@@ -286,13 +286,12 @@ function renderWardrobeUI() {
 
   const { items, currentOutfit, savedOutfits, activeCategory } = wardrobeApp.state;
 
-  // 1. Actualizar botones de categoría activa
+  // 1. Selector de categorías
   document.querySelectorAll('.cat-btn').forEach((btn) => {
     const cat = (btn as HTMLElement).dataset.cat;
     btn.classList.toggle('active', cat === activeCategory);
   });
 
-  // Título de la categoría actual en carrusel
   const catTitleEl = document.getElementById('carousel-category-title');
   if (catTitleEl) {
     const titles: Record<ClothingCategory, string> = {
@@ -304,7 +303,7 @@ function renderWardrobeUI() {
     catTitleEl.textContent = titles[activeCategory];
   }
 
-  // 2. Renderizar carrusel de prendas
+  // 2. Carrusel de Prendas
   const carousel = document.getElementById('clothing-carousel');
   if (carousel) {
     const filteredItems = items.filter(i => i.category === activeCategory);
@@ -316,29 +315,39 @@ function renderWardrobeUI() {
       </button>
     `;
 
-    filteredItems.forEach((item) => {
-      const isSelected =
-        (item.category === 'tops' && currentOutfit.topId === item.id) ||
-        (item.category === 'bottoms' && currentOutfit.bottomId === item.id) ||
-        (item.category === 'shoes' && currentOutfit.shoesId === item.id) ||
-        (item.category === 'accessories' && currentOutfit.accessoryId === item.id);
-
+    if (filteredItems.length === 0) {
       html += `
-        <article class="clothing-card ${isSelected ? 'selected' : ''}" data-item-id="${item.id}">
-          <div class="card-swatch" style="background: ${item.color}; border: 1px solid rgba(0,0,0,0.08);">
-            ${item.photoUrl ? `<img src="${item.photoUrl}" class="swatch-photo" alt="" />` : `<span class="swatch-badge">${getCategoryEmoji(item.category)}</span>`}
-          </div>
-          <span class="card-name">${escapeHtml(item.name)}</span>
-          <span class="card-status">${isSelected ? '✓ Puesto' : 'Probar'}</span>
-        </article>
+        <div class="empty-category-hint">
+          <b>Aún no has subido prendas aquí</b>
+          <small>Toca "Subir Foto" para fotografiar ropa real de tu bebé y clasificarla con IA.</small>
+        </div>
       `;
-    });
+    } else {
+      filteredItems.forEach((item) => {
+        const isSelected =
+          (item.category === 'tops' && currentOutfit.topId === item.id) ||
+          (item.category === 'bottoms' && currentOutfit.bottomId === item.id) ||
+          (item.category === 'shoes' && currentOutfit.shoesId === item.id) ||
+          (item.category === 'accessories' && currentOutfit.accessoryId === item.id);
+
+        html += `
+          <article class="clothing-card ${isSelected ? 'selected' : ''}" data-item-id="${item.id}">
+            <button class="btn-del-item" data-del-item="${item.id}" title="Eliminar prenda">×</button>
+            <div class="card-swatch" style="background: ${item.color};">
+              ${item.photoUrl ? `<img src="${item.photoUrl}" class="swatch-photo" alt="" />` : `<span class="swatch-badge">${getCategoryEmoji(item.category)}</span>`}
+            </div>
+            <span class="card-name">${escapeHtml(item.name)}</span>
+            <span class="card-status">${isSelected ? '✓ Puesto' : 'Probar'}</span>
+          </article>
+        `;
+      });
+    }
 
     carousel.innerHTML = html;
 
-    // Listeners en tarjetas del carrusel
     carousel.querySelectorAll('[data-item-id]').forEach((card) => {
-      card.addEventListener('click', () => {
+      card.addEventListener('click', (e) => {
+        if ((e.target as HTMLElement).classList.contains('btn-del-item')) return;
         const itemId = (card as HTMLElement).dataset.itemId;
         const item = items.find(i => i.id === itemId);
         if (item && wardrobeApp) {
@@ -348,16 +357,33 @@ function renderWardrobeUI() {
       });
     });
 
+    carousel.querySelectorAll('[data-del-item]').forEach((delBtn) => {
+      delBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const itemId = (delBtn as HTMLElement).dataset.delItem;
+        if (itemId && confirm('¿Deseas eliminar esta prenda de tu catálogo?')) {
+          wardrobeApp?.deleteClothing(itemId);
+          renderWardrobeUI();
+          showWardrobeToast('Prenda eliminada del catálogo');
+        }
+      });
+    });
+
     document.getElementById('btn-add-quick')?.addEventListener('click', () => {
       (document.getElementById('modal-upload-clothing') as HTMLDialogElement)?.showModal();
     });
   }
 
-  // 3. Renderizar Mis Combinaciones (Looks)
+  // 3. Mis Combinaciones (Looks)
   const looksContainer = document.getElementById('saved-looks-list');
   if (looksContainer) {
     if (savedOutfits.length === 0) {
-      looksContainer.innerHTML = '<div class="empty-looks">Aún no tienes looks guardados. Arma una combinación y toca "Guardar Look".</div>';
+      looksContainer.innerHTML = `
+        <div class="empty-looks">
+          <b>Sin combinaciones guardadas</b>
+          <small>Viste al bebé con tus prendas subidas y toca "Guardar Look".</small>
+        </div>
+      `;
     } else {
       looksContainer.innerHTML = savedOutfits.map((outfit) => {
         const top = items.find(i => i.id === outfit.topId);
@@ -386,7 +412,7 @@ function renderWardrobeUI() {
           if (outfitId && wardrobeApp) {
             wardrobeApp.wearSavedOutfit(outfitId);
             renderWardrobeUI();
-            showWardrobeToast('¡Conjunto aplicado al bebé!');
+            showWardrobeToast('¡Conjunto puesto en el bebé!');
           }
         });
       });
@@ -416,5 +442,4 @@ function showWardrobeToast(msg: string) {
   }
 }
 
-// Exponer en window para que app.js lo invoque al entrar a la vista
 (window as unknown as { initWardrobe3D: () => void }).initWardrobe3D = initWardrobe3D;
