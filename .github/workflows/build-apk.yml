@@ -1,7 +1,7 @@
-name: Compilar APK Android de Bichito
+name: Compilar APK Nativo Android con Widgets
 
 on:
-  workflow_dispatch: # Permite ejecutar la compilación manualmente con 1 clic desde GitHub
+  workflow_dispatch:
   push:
     branches: [ main, master ]
 
@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Descargar código del repositorio
+      - name: Descargar repositorio
         uses: actions/checkout@v4
 
       - name: Configurar Java 17
@@ -20,26 +20,15 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Configurar Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Instalar Dependencias de Expo y React Native
-        working-directory: ./android-native
-        run: |
-          npm install
-          npx expo prebuild --platform android --clean
-
       - name: Compilar APK Nativo con Gradle
-        working-directory: ./android-native/android
+        working-directory: ./android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Subir APK Listo para Instalar (Artifact)
+      - name: Subir APK Instalable (Artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: Bichito-Android.apk
-          path: ./android-native/android/app/build/outputs/apk/release/*.apk
+          name: Bichito-Widgets-Android.apk
+          path: ./android/app/build/outputs/apk/debug/*.apk
           retention-days: 30

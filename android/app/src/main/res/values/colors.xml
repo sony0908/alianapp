@@ -1,0 +1,11 @@
+<resources>
+    <color name="bichito_orange">#df7446</color>
+    <color name="bichito_orange_soft">#fde3d5</color>
+    <color name="bichito_blue">#5e9dcc</color>
+    <color name="bichito_blue_soft">#e0eff9</color>
+    <color name="bichito_ink">#26313b</color>
+    <color name="bichito_muted">#69747e</color>
+    <color name="bichito_bg">#fff8f2</color>
+    <color name="bichito_surface">#fffdfb</color>
+    <color name="bichito_line">#eee2d8</color>
+</resources>

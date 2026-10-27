@@ -282,7 +282,17 @@ function render() {
   list();
   history();
   reminder(e);
+  if (window.AndroidBridge && typeof window.AndroidBridge.updateWidget === "function") {
+    try {
+      window.AndroidBridge.updateWidget(e.n || "Próxima siesta en cálculo", e.t || "Bichito al día");
+    } catch {}
+  }
 }
+window.openQuickLogFromWidget = function(type) {
+  if (type === "feed" || type === "feeding") openLog("feeding");
+  else if (type === "sleep") openLog(active() ? "sleepEnd" : "sleepStart");
+  else if (type === "diaper") openLog("diaper");
+};
 function list() {
   let a = events();
   $("listTitle").textContent = pick === key() ? "Hoy" : fmt(date(pick));

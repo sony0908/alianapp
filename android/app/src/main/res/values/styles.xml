@@ -1,0 +1,10 @@
+<resources>
+    <style name="Theme.Bichito" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/bichito_orange</item>
+        <item name="colorOnPrimary">#ffffff</item>
+        <item name="android:statusBarColor">@color/bichito_orange</item>
+        <item name="android:navigationBarColor">@color/bichito_bg</item>
+        <item name="android:windowBackground">@color/bichito_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

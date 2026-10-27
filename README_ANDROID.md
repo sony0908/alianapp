@@ -1,64 +1,43 @@
-# Bichito - Guía para Obtener el APK e Implementar Widgets de Android
+# Bichito - Aplicación Nativa para Android con Soporte de Widgets
 
-Esta guía detalla las 3 formas de obtener el archivo **APK listo para instalar** en cualquier teléfono Android, y cómo funciona la arquitectura de **Widgets de Pantalla de Inicio (AppWidgets)** incluida en el proyecto.
-
----
-
-## 1. Tres Métodos para Obtener el APK Listo para Instalar
-
-### Método A: Compilación Automática en GitHub (Recomendado - 1 Clic y Gratis)
-Ya dejamos configurado el flujo de compilación en `.github/workflows/build-apk.yml` para tu repositorio (`https://github.com/sony0908/alianapp.git`):
-
-1. Sube estos cambios a tu repositorio de GitHub (`git push`).
-2. Entra a tu repositorio en GitHub y haz clic en la pestaña **"Actions"**.
-3. En la barra lateral izquierda, selecciona el flujo **"Compilar APK Android de Bichito"**.
-4. Haz clic en el botón **"Run workflow"** (o se ejecutará solo en cada push).
-5. GitHub utilizará sus servidores en la nube con Java 17 y Android SDK para compilar el APK en ~3 minutos.
-6. Al finalizar, aparecerá el archivo **`Bichito-Android.apk`** listo para descargar e instalar en tu celular.
+Este repositorio incluye ahora un **proyecto nativo Android completo** en la carpeta `/android`, configurado con SDK 34, Material 3 y **Widgets para la Pantalla de Inicio (AppWidgets)** para Android.
 
 ---
 
-### Método B: Descarga Inmediata vía PWABuilder (Sin necesidad de compilar)
-Bichito ya cuenta con `manifest.webmanifest`, iconos y `service-worker.js` válidos:
+## 📱 ¿Qué incluye la versión nativa de Android?
 
-1. Ve a [https://www.pwabuilder.com](https://www.pwabuilder.com).
-2. Pega la URL de tu aplicación (por ejemplo, `https://alianapp.vercel.app`).
-3. Haz clic en **"Package for Android"** (o "Generate APK").
-4. Descarga el paquete APK firmado listo para instalar.
+1. **Widget de Pantalla de Inicio (`BichitoAppWidget`)**:
+   - Muestra la próxima siesta calculada y el último registro del bebé en vivo.
+   - Botones rápidos en el escritorio del celular:
+     - `🍼 Comida`: Abre la app directamente para registrar alimentación.
+     - `😴 Siesta`: Inicia o finaliza la siesta con un toque.
+     - `🚼 Pañal`: Registra cambio de pañal.
+   - Se actualiza automáticamente cuando registras algo dentro de la app mediante `AndroidBridge`.
 
----
-
-### Método C: Con Expo CLI / EAS Build (En tu computadora)
-Si tienes Node.js en tu máquina:
-```bash
-# 1. Instalar la herramienta oficial de compilación en la nube de Expo
-npm install -g eas-cli
-
-# 2. Entrar a la carpeta del proyecto nativo
-cd android-native
-
-# 3. Iniciar sesión y compilar APK directo
-eas build -p android --profile preview
-```
-Al finalizar, la terminal te entregará un enlace directo y un código QR para descargar el `.apk` directamente a tu celular.
+2. **Aplicación Nativa con WebView (`MainActivity`)**:
+   - Carga la interfaz oficial de Bichito con el tema terracota (`#df7446`).
+   - Soporte para el botón físico "Atrás" de Android.
+   - Gesto de deslizar hacia abajo para actualizar (*Swipe-to-Refresh*).
+   - Acceso a enlaces de teléfono (`tel:`) y WhatsApp de urgencia.
 
 ---
 
-## 2. Arquitectura de Widgets para la Pantalla de Inicio (Android AppWidgets)
+## 🛠️ Cómo abrirlo y compilar el APK en Android Studio
 
-Para que puedas trabajar en los **Widgets de Android**, hemos creado la estructura nativa en `android-native/widget/`:
+1. Abre **Android Studio** en tu computadora.
+2. Selecciona **"Open"** y elige la carpeta **`/android`** de este proyecto.
+3. Espera a que Gradle sincronice las dependencias.
+4. Para generar el APK listo para instalar:
+   - Ve al menú superior: **Build > Build Bundle(s) / APK(s) > Build APK(s)**.
+   - En 1 minuto Android Studio te mostrará un mensaje: *"APK(s) generated successfully"* con un botón **"locate"** para abrir el archivo `.apk` y pasarlo a tu celular.
+5. Para probarlo en el emulador o tu celular conectado por USB:
+   - Haz clic en el botón verde **▶ (Run)**.
 
-### Archivos creados:
-1. **`android-native/widget/bichito_widget_info.xml`**:
-   - Define las dimensiones (4x2 celdas), categoría de pantalla de inicio y tiempo de actualización (`updatePeriodMillis`).
+---
 
-2. **`android-native/widget/bichito_widget.xml`**:
-   - Diseño visual del widget con los colores oficiales de Bichito (`#df7446` terracota, `#5e9dcc` azul, fondo `#fff8f2`).
-   - Muestra el estado del bebé: **Próxima siesta sugerida**, **Última toma** y tiempo transcurrido.
-   - **Botones de acción rápida**:
-     - `🍼 Comida`
-     - `😴 Siesta`
-     - `🚼 Pañal`
+## 🚀 Compilación Automática en GitHub Actions
 
-3. **`android-native/widget/BichitoWidget.kt`**:
-   - Código Kotlin (`AppWidgetProvider`) que gestiona el evento `onUpdate` y los `PendingIntent` para abrir la app o ejecutar acciones de registro rápido al tocar cada botón del widget desde la pantalla de inicio del teléfono.
+El archivo `.github/workflows/build-apk.yml` está configurado para compilar el APK de forma automática:
+- En tu repositorio de GitHub, entra a la pestaña **Actions**.
+- Selecciona **"Compilar APK Nativo Android con Widgets"** y presiona **"Run workflow"**.
+- Descarga el archivo generado **`Bichito-Widgets-Android.apk`**.

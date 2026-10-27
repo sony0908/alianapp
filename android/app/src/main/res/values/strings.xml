@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Bichito</string>
+    <string name="widget_name">Bichito Resumen</string>
+    <string name="widget_description">Muestra la próxima siesta, última toma y permite registrar rápido desde tu pantalla de inicio.</string>
+</resources>
