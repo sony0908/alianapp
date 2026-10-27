@@ -1,0 +1,494 @@
+/* BabyStyle 3D Wardrobe Styles */
+.wardrobe-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 14px;
+  width: 100%;
+}
+
+.wardrobe-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--s);
+  border: 1px solid var(--l);
+  border-radius: 20px;
+  padding: 14px 18px;
+  box-shadow: 0 4px 16px rgba(91, 57, 35, 0.04);
+}
+
+.wardrobe-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wardrobe-icon {
+  font-size: 1.8rem;
+  background: var(--os);
+  border-radius: 12px;
+  padding: 4px 8px;
+  line-height: 1;
+}
+
+.wardrobe-title h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 850;
+  color: var(--i);
+}
+
+.wardrobe-title small {
+  color: var(--m);
+  font-size: 0.78rem;
+}
+
+.wardrobe-top-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-tool {
+  border: 1px solid var(--l);
+  background: var(--p);
+  color: var(--i);
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  font-weight: 750;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-tool:hover, .btn-tool.active {
+  background: var(--os);
+  border-color: var(--o);
+  color: var(--o);
+}
+
+.wardrobe-main-layout {
+  display: grid;
+  grid-template-columns: 84px 1fr 220px;
+  gap: 14px;
+  align-items: stretch;
+}
+
+@media (max-width: 720px) {
+  .wardrobe-main-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wardrobe-categories {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (max-width: 720px) {
+  .wardrobe-categories {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+}
+
+.cat-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: var(--s);
+  border: 1px solid var(--l);
+  border-radius: 18px;
+  padding: 12px 6px;
+  cursor: pointer;
+  color: var(--m);
+  transition: all 0.2s;
+}
+
+@media (max-width: 720px) {
+  .cat-btn {
+    flex: 1;
+    min-width: 72px;
+  }
+}
+
+.cat-btn.active {
+  background: var(--os);
+  border-color: var(--o);
+  color: var(--o);
+  box-shadow: 0 4px 14px rgba(223, 116, 70, 0.18);
+}
+
+.cat-icon {
+  font-size: 1.4rem;
+}
+
+.cat-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.wardrobe-3d-stage {
+  position: relative;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid var(--l);
+  background: var(--s);
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 30px rgba(91, 57, 35, 0.06);
+}
+
+.three-viewport {
+  width: 100%;
+  height: 420px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.three-viewport:active {
+  cursor: grabbing;
+}
+
+.rotate-hint {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 253, 251, 0.9);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--l);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 0.74rem;
+  font-weight: 750;
+  color: var(--m);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.rotate-arrow {
+  color: var(--o);
+  font-weight: 850;
+}
+
+.wardrobe-looks-panel {
+  background: var(--s);
+  border: 1px solid var(--l);
+  border-radius: 22px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.looks-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.looks-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 850;
+  color: var(--i);
+}
+
+.btn-save-look {
+  border: 0;
+  background: var(--os);
+  color: var(--o);
+  border-radius: 12px;
+  padding: 8px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-save-look:hover {
+  background: var(--o);
+  color: #fff;
+}
+
+.saved-looks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.look-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--l);
+  background: var(--p);
+  border-radius: 14px;
+  padding: 8px 10px;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.look-card:hover {
+  border-color: var(--o);
+  background: #fff;
+}
+
+.look-swatches {
+  display: flex;
+  gap: 3px;
+}
+
+.mini-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 11px;
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+.look-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.look-info b {
+  display: block;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--i);
+}
+
+.look-info small {
+  color: var(--m);
+  font-size: 0.68rem;
+}
+
+.btn-wear-look {
+  border: 0;
+  background: var(--o);
+  color: #fff;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.wardrobe-carousel-tray {
+  background: var(--s);
+  border: 1px solid var(--l);
+  border-radius: 22px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.carousel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cat-current-name {
+  font-size: 0.88rem;
+  font-weight: 850;
+  color: var(--i);
+}
+
+.btn-upload-badge {
+  border: 1px dashed var(--o);
+  background: var(--os);
+  color: var(--o);
+  border-radius: 14px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.clothing-carousel {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 2px 8px;
+  scrollbar-width: thin;
+}
+
+.clothing-card {
+  flex: 0 0 110px;
+  border: 1px solid var(--l);
+  background: var(--p);
+  border-radius: 16px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.clothing-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--m);
+}
+
+.clothing-card.selected {
+  border: 2px solid var(--o);
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(223, 116, 70, 0.18);
+}
+
+.clothing-card.add-card {
+  border: 2px dashed var(--o);
+  background: var(--os);
+  color: var(--o);
+  justify-content: center;
+}
+
+.card-swatch {
+  width: 58px;
+  height: 58px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.swatch-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.swatch-badge {
+  font-size: 1.6rem;
+}
+
+.card-add-icon {
+  font-size: 2rem;
+  margin: 6px 0 2px;
+}
+
+.card-name {
+  font-size: 0.74rem;
+  font-weight: 750;
+  line-height: 1.25;
+  color: var(--i);
+  max-width: 95px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.card-status {
+  font-size: 0.68rem;
+  color: var(--m);
+  font-weight: 700;
+}
+
+.clothing-card.selected .card-status {
+  color: var(--o);
+  font-weight: 850;
+}
+
+.upload-dropzone {
+  border: 2px dashed var(--l);
+  background: var(--p);
+  border-radius: 18px;
+  padding: 22px;
+  text-align: center;
+  cursor: pointer;
+  margin-top: 14px;
+  transition: border 0.2s;
+}
+
+.upload-dropzone:hover {
+  border-color: var(--o);
+}
+
+.upload-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.upload-big-icon {
+  font-size: 2.2rem;
+}
+
+.upload-preview {
+  max-width: 100%;
+  max-height: 220px;
+  border-radius: 14px;
+  object-fit: contain;
+  margin: 0 auto;
+}
+
+.ai-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px;
+  background: var(--bs);
+  border-radius: 12px;
+  color: var(--b);
+  font-weight: 750;
+  font-size: 0.85rem;
+}
+
+.color-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.color-picker-row input[type="color"] {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.color-hex-label {
+  font-family: monospace;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.empty-looks {
+  color: var(--m);
+  font-size: 0.8rem;
+  text-align: center;
+  padding: 16px 8px;
+  border: 1px dashed var(--l);
+  border-radius: 12px;
+}

@@ -373,10 +373,15 @@ function toast(x) {
 function view(v) {
   $("today").classList.toggle("hide", v !== "today");
   $("history").classList.toggle("hide", v !== "history");
+  const wardrobeEl = $("wardrobe");
+  if (wardrobeEl) wardrobeEl.classList.toggle("hide", v !== "wardrobe");
   document
     .querySelectorAll("[data-view]")
     .forEach((b) => b.classList.toggle("active", b.dataset.view === v));
   if (v === "today") render();
+  if (v === "wardrobe" && typeof window.initWardrobe3D === "function") {
+    window.initWardrobe3D();
+  }
 }
 function fields() {
   let t = $("type").value;
