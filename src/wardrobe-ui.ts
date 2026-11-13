@@ -1,4 +1,12 @@
 import { BabyStyle3D, ClothingCategory } from './wardrobe3d';
+import {
+  EYE_PRESETS,
+  EyePresetKey,
+  HAIR_PRESETS,
+  HairPresetKey,
+  SKIN_PRESETS,
+  SkinPresetKey,
+} from './babyAssets';
 
 let wardrobeApp: BabyStyle3D | null = null;
 let analyzedSubType: string | null = null;
@@ -49,7 +57,8 @@ export function initWardrobe3D() {
           </div>
         </div>
         <div class="wardrobe-top-actions">
-          <button id="btn-baby-face" class="btn-tool" title="Cambiar foto del rostro del bebé">👶 Rostro</button>
+          <button id="btn-baby-face" class="btn-tool" title="Personalizar rostro, ojos, cabello y chupete">👶 Bebé</button>
+          <button id="btn-pacifier" class="btn-tool" title="Poner o quitar chupete">🍼 Chupete</button>
           <button id="btn-theme-bg" class="btn-tool" title="Cambiar Fondo de Estudio">🎨 Fondo</button>
           <button id="btn-auto-rotate" class="btn-tool" title="Giro 360°">🔄 360°</button>
           <button id="btn-clear-outfit" class="btn-tool" title="Dejar solo con pañal">🧹 Desvestir</button>
@@ -158,32 +167,72 @@ export function initWardrobe3D() {
       </div>
     </dialog>
 
-    <!-- Modal para Cambiar o Ajustar el Rostro del Bebé -->
+    <!-- Modal para Personalizar Apariencia Realista 3D del Bebé -->
     <dialog id="modal-baby-face" class="wardrobe-modal">
       <div class="sheet">
         <div class="head">
-          <h2>Rostro del Bebé</h2>
+          <h2>Apariencia del Bebé 3D</h2>
           <button class="x" id="btn-close-face-modal">×</button>
         </div>
-        <p class="note">Elige entre las fotos de tu bebé o sube una nueva foto frontal de su carita para actualizar el modelo 3D.</p>
-        
-        <div class="face-presets-grid">
-          <button type="button" class="face-preset-btn" data-face-url="/baby-face.jpg">
-            <img src="/baby-face.jpg" alt="Rostro tierno" />
-            <span>Mirada al frente</span>
-          </button>
-          <button type="button" class="face-preset-btn" data-face-url="/baby-face-smile.jpg">
-            <img src="/baby-face-smile.jpg" alt="Sonriendo" />
-            <span>Sonriendo</span>
-          </button>
+        <p class="note">Personaliza los rasgos esculpidos en 3D o proyecta una foto real de tu bebé.</p>
+
+        <div class="appearance-section">
+          <span class="appearance-label">Modo de rostro</span>
+          <div class="chip-row">
+            <button type="button" class="chip-btn" data-face-mode="sculpted3d">✨ 3D Realista (Recomendado)</button>
+            <button type="button" class="chip-btn" data-face-mode="photo">📷 Foto Real</button>
+          </div>
         </div>
 
-        <div class="upload-dropzone" id="face-dropzone" style="margin-top: 16px;">
+        <div id="sculpted-controls">
+          <div class="appearance-section">
+            <span class="appearance-label">Tono de piel</span>
+            <div class="chip-row">
+              ${(Object.keys(SKIN_PRESETS) as SkinPresetKey[]).map(
+                (k) => `<button type="button" class="chip-btn" data-skin="${k}"><i class="dot-swatch" style="background:${SKIN_PRESETS[k].base}"></i>${SKIN_PRESETS[k].label}</button>`
+              ).join('')}
+            </div>
+          </div>
+
+          <div class="appearance-section">
+            <span class="appearance-label">Color de ojos</span>
+            <div class="chip-row">
+              ${(Object.keys(EYE_PRESETS) as EyePresetKey[]).map(
+                (k) => `<button type="button" class="chip-btn" data-eye="${k}"><i class="dot-swatch" style="background:${EYE_PRESETS[k].mid}"></i>${EYE_PRESETS[k].label}</button>`
+              ).join('')}
+            </div>
+          </div>
+
+          <div class="appearance-section">
+            <span class="appearance-label">Cabello 3D</span>
+            <div class="chip-row">
+              ${(Object.keys(HAIR_PRESETS) as HairPresetKey[]).map(
+                (k) => `<button type="button" class="chip-btn" data-hair="${k}"><i class="dot-swatch" style="background:${HAIR_PRESETS[k].base}"></i>${HAIR_PRESETS[k].label}</button>`
+              ).join('')}
+            </div>
+          </div>
+        </div>
+
+        <div class="appearance-section">
+          <span class="appearance-label">Fotos reales de tu bebé (modo foto)</span>
+          <div class="face-presets-grid">
+            <button type="button" class="face-preset-btn" data-face-url="/baby-face.jpg">
+              <img src="/baby-face.jpg" alt="Rostro tierno" />
+              <span>Mirada al frente</span>
+            </button>
+            <button type="button" class="face-preset-btn" data-face-url="/baby-face-smile.jpg">
+              <img src="/baby-face-smile.jpg" alt="Sonriendo" />
+              <span>Sonriendo</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="upload-dropzone" id="face-dropzone" style="margin-top: 14px;">
           <input type="file" id="baby-face-input" accept="image/*" class="hide" />
           <div class="upload-prompt">
             <span class="upload-big-icon">👶</span>
-            <b>Subir otra foto del rostro de tu bebé</b>
-            <small>Recomendado: foto de frente y bien iluminada</small>
+            <b>Subir otra foto frontal de tu bebé</b>
+            <small>Se proyectará en modo foto real</small>
           </div>
         </div>
       </div>
@@ -225,9 +274,22 @@ function setupEventListeners() {
     });
   });
 
-  // Botón Rostro del Bebé
+  // Botón Apariencia del Bebé 3D & Chupete
   const faceModal = document.getElementById('modal-baby-face') as HTMLDialogElement;
   const faceInput = document.getElementById('baby-face-input') as HTMLInputElement;
+  const pacifierBtn = document.getElementById('btn-pacifier');
+  if (pacifierBtn && wardrobeApp) {
+    pacifierBtn.classList.toggle('active', wardrobeApp.state.showPacifier);
+  }
+
+  pacifierBtn?.addEventListener('click', () => {
+    if (!wardrobeApp) return;
+    const next = !wardrobeApp.state.showPacifier;
+    wardrobeApp.setSculptedAppearance({ faceMode: 'sculpted3d', showPacifier: next });
+    pacifierBtn.classList.toggle('active', next);
+    updateFacePresetSelection();
+    showWardrobeToast(next ? 'Chupete puesto' : 'Chupete quitado');
+  });
 
   document.getElementById('btn-baby-face')?.addEventListener('click', () => {
     updateFacePresetSelection();
@@ -236,6 +298,46 @@ function setupEventListeners() {
 
   document.getElementById('btn-close-face-modal')?.addEventListener('click', () => {
     faceModal?.close();
+  });
+
+  document.querySelectorAll('[data-face-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const mode = (btn as HTMLElement).dataset.faceMode as 'sculpted3d' | 'photo';
+      if (wardrobeApp && mode) {
+        wardrobeApp.setSculptedAppearance({ faceMode: mode });
+        updateFacePresetSelection();
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-skin]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const skinPreset = (btn as HTMLElement).dataset.skin as SkinPresetKey;
+      if (wardrobeApp && skinPreset) {
+        wardrobeApp.setSculptedAppearance({ faceMode: 'sculpted3d', skinPreset });
+        updateFacePresetSelection();
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-eye]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const eyePreset = (btn as HTMLElement).dataset.eye as EyePresetKey;
+      if (wardrobeApp && eyePreset) {
+        wardrobeApp.setSculptedAppearance({ faceMode: 'sculpted3d', eyePreset });
+        updateFacePresetSelection();
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-hair]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const hairPreset = (btn as HTMLElement).dataset.hair as HairPresetKey;
+      if (wardrobeApp && hairPreset) {
+        wardrobeApp.setSculptedAppearance({ hairPreset });
+        updateFacePresetSelection();
+      }
+    });
   });
 
   document.querySelectorAll('[data-face-url]').forEach((btn) => {
@@ -441,10 +543,23 @@ function setupEventListeners() {
 
 function updateFacePresetSelection() {
   if (!wardrobeApp) return;
-  const activeUrl = wardrobeApp.state.babyFaceUrl;
+  const { faceMode, babyFaceUrl, skinPreset, eyePreset, hairPreset } = wardrobeApp.state;
+
+  document.querySelectorAll('[data-face-mode]').forEach((btn) => {
+    btn.classList.toggle('active', (btn as HTMLElement).dataset.faceMode === faceMode);
+  });
+  document.querySelectorAll('[data-skin]').forEach((btn) => {
+    btn.classList.toggle('active', (btn as HTMLElement).dataset.skin === skinPreset);
+  });
+  document.querySelectorAll('[data-eye]').forEach((btn) => {
+    btn.classList.toggle('active', (btn as HTMLElement).dataset.eye === eyePreset);
+  });
+  document.querySelectorAll('[data-hair]').forEach((btn) => {
+    btn.classList.toggle('active', (btn as HTMLElement).dataset.hair === hairPreset);
+  });
   document.querySelectorAll('[data-face-url]').forEach((btn) => {
     const url = (btn as HTMLElement).dataset.faceUrl;
-    btn.classList.toggle('active', url === activeUrl);
+    btn.classList.toggle('active', faceMode === 'photo' && url === babyFaceUrl);
   });
 }
 

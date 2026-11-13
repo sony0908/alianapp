@@ -596,3 +596,51 @@
   color: var(--o);
 }
 
+.appearance-section {
+  margin-top: 14px;
+}
+
+.appearance-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--m);
+  margin-bottom: 6px;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1.5px solid var(--l);
+  background: var(--p);
+  color: var(--i);
+  border-radius: 12px;
+  padding: 7px 11px;
+  font-size: 0.78rem;
+  font-weight: 750;
+  cursor: pointer;
+  transition: all 0.16s;
+}
+
+.chip-btn.active,
+.chip-btn:hover {
+  border-color: var(--o);
+  background: var(--os);
+  color: var(--o);
+}
+
+.dot-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  display: inline-block;
+}
+
