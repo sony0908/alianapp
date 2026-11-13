@@ -1,6 +1,32 @@
-import { BabyStyle3D, ClothingCategory, ClothingItem } from './wardrobe3d';
+import { BabyStyle3D, ClothingCategory } from './wardrobe3d';
 
 let wardrobeApp: BabyStyle3D | null = null;
+let analyzedSubType: string | null = null;
+
+// Redimensiona imágenes en el cliente para ahorrar memoria y evitar límites de localStorage
+function compressImageBase64(file: File, maxSize = 512): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.86));
+      };
+      img.onerror = reject;
+      img.src = reader.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export function initWardrobe3D() {
   const container = document.getElementById('wardrobe-root');
@@ -18,18 +44,19 @@ export function initWardrobe3D() {
         <div class="wardrobe-title">
           <span class="wardrobe-icon">👗</span>
           <div>
-            <h2>BabyStyle 3D</h2>
-            <small>Probador virtual y catálogo de vestuario</small>
+            <h2>Armario 3D de Bichito</h2>
+            <small>Probador con tu bebé real y tu ropa</small>
           </div>
         </div>
         <div class="wardrobe-top-actions">
+          <button id="btn-baby-face" class="btn-tool" title="Cambiar foto del rostro del bebé">👶 Rostro</button>
           <button id="btn-theme-bg" class="btn-tool" title="Cambiar Fondo de Estudio">🎨 Fondo</button>
-          <button id="btn-auto-rotate" class="btn-tool" title="Giro 360°">🔄 Auto 360°</button>
-          <button id="btn-clear-outfit" class="btn-tool" title="Desvestir maniquí">🧹 Desvestir</button>
+          <button id="btn-auto-rotate" class="btn-tool" title="Giro 360°">🔄 360°</button>
+          <button id="btn-clear-outfit" class="btn-tool" title="Dejar solo con pañal">🧹 Desvestir</button>
         </div>
       </header>
 
-      <!-- Zona Principal: Categorías + Canvas 3D + Mis Combinaciones -->
+      <!-- Zona Principal: Categorías + Visor 3D + Mis Combinaciones -->
       <div class="wardrobe-main-layout">
         <!-- Selector Lateral de Categorías -->
         <aside class="wardrobe-categories">
@@ -51,7 +78,7 @@ export function initWardrobe3D() {
           </button>
         </aside>
 
-        <!-- Visor 3D Interactivo de Alta Fidelidad -->
+        <!-- Visor 3D Interactivo -->
         <main class="wardrobe-3d-stage">
           <div id="three-stage" class="three-viewport"></div>
           
@@ -74,7 +101,7 @@ export function initWardrobe3D() {
       <!-- Carrusel Inferior de Prendas Reales -->
       <footer class="wardrobe-carousel-tray">
         <div class="carousel-header">
-          <span id="carousel-category-title" class="cat-current-name">Tops & Poleras</span>
+          <span id="carousel-category-title" class="cat-current-name">Tops, Poleras & Bodys</span>
           <button id="btn-upload-clothing" class="btn-upload-badge">📷 ➕ Subir Foto de Ropa</button>
         </div>
         <div id="clothing-carousel" class="clothing-carousel"></div>
@@ -88,7 +115,7 @@ export function initWardrobe3D() {
           <h2>Añadir Ropa al Armario 3D</h2>
           <button class="x" id="btn-close-upload-modal">×</button>
         </div>
-        <p class="note">Toma una foto de la prenda extendida sobre una mesa. La IA detectará su color y categoría para armar tu catálogo real.</p>
+        <p class="note">Toma una foto de la prenda extendida. La IA detectará el nombre, color y tipo para vestir al bebé.</p>
         
         <div class="upload-dropzone" id="dropzone">
           <input type="file" id="clothing-file-input" accept="image/*" class="hide" />
@@ -130,6 +157,52 @@ export function initWardrobe3D() {
         </div>
       </div>
     </dialog>
+
+    <!-- Modal para Cambiar o Ajustar el Rostro del Bebé -->
+    <dialog id="modal-baby-face" class="wardrobe-modal">
+      <div class="sheet">
+        <div class="head">
+          <h2>Rostro del Bebé</h2>
+          <button class="x" id="btn-close-face-modal">×</button>
+        </div>
+        <p class="note">Elige entre las fotos de tu bebé o sube una nueva foto frontal de su carita para actualizar el modelo 3D.</p>
+        
+        <div class="face-presets-grid">
+          <button type="button" class="face-preset-btn" data-face-url="/baby-face.jpg">
+            <img src="/baby-face.jpg" alt="Rostro tierno" />
+            <span>Mirada al frente</span>
+          </button>
+          <button type="button" class="face-preset-btn" data-face-url="/baby-face-smile.jpg">
+            <img src="/baby-face-smile.jpg" alt="Sonriendo" />
+            <span>Sonriendo</span>
+          </button>
+        </div>
+
+        <div class="upload-dropzone" id="face-dropzone" style="margin-top: 16px;">
+          <input type="file" id="baby-face-input" accept="image/*" class="hide" />
+          <div class="upload-prompt">
+            <span class="upload-big-icon">👶</span>
+            <b>Subir otra foto del rostro de tu bebé</b>
+            <small>Recomendado: foto de frente y bien iluminada</small>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Modal para Guardar Combinación -->
+    <dialog id="modal-save-look" class="wardrobe-modal">
+      <div class="sheet">
+        <div class="head">
+          <h2>Guardar Combinación</h2>
+          <button class="x" id="btn-close-save-look">×</button>
+        </div>
+        <p class="note">Dale un nombre a este conjunto para volver a probárselo al bebé cuando quieras.</p>
+        <label class="field">Nombre del conjunto
+          <input type="text" id="input-look-name" maxlength="40" placeholder="Ej. Ropa de paseo, Pijama de noche" />
+        </label>
+        <button id="btn-confirm-save-look" class="primary" style="margin-top: 18px;">💾 Guardar Combinación</button>
+      </div>
+    </dialog>
   `;
 
   wardrobeApp = new BabyStyle3D('three-stage');
@@ -152,6 +225,49 @@ function setupEventListeners() {
     });
   });
 
+  // Botón Rostro del Bebé
+  const faceModal = document.getElementById('modal-baby-face') as HTMLDialogElement;
+  const faceInput = document.getElementById('baby-face-input') as HTMLInputElement;
+
+  document.getElementById('btn-baby-face')?.addEventListener('click', () => {
+    updateFacePresetSelection();
+    faceModal?.showModal();
+  });
+
+  document.getElementById('btn-close-face-modal')?.addEventListener('click', () => {
+    faceModal?.close();
+  });
+
+  document.querySelectorAll('[data-face-url]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const url = (btn as HTMLElement).dataset.faceUrl;
+      if (url && wardrobeApp) {
+        wardrobeApp.loadBabyFacePhoto(url);
+        updateFacePresetSelection();
+        faceModal?.close();
+        showWardrobeToast('Rostro del bebé actualizado en el modelo 3D');
+      }
+    });
+  });
+
+  document.getElementById('face-dropzone')?.addEventListener('click', () => {
+    faceInput?.click();
+  });
+
+  faceInput?.addEventListener('change', async (e) => {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file || !wardrobeApp) return;
+    try {
+      const compressed = await compressImageBase64(file, 512);
+      wardrobeApp.loadBabyFacePhoto(compressed);
+      updateFacePresetSelection();
+      faceModal?.close();
+      showWardrobeToast('Nueva foto del rostro aplicada al bebé 3D');
+    } catch (err) {
+      console.warn('Error cargando foto del bebé:', err);
+    }
+  });
+
   // Botón Fondo
   document.getElementById('btn-theme-bg')?.addEventListener('click', () => {
     if (!wardrobeApp) return;
@@ -172,23 +288,39 @@ function setupEventListeners() {
   document.getElementById('btn-clear-outfit')?.addEventListener('click', () => {
     wardrobeApp?.clearOutfit();
     renderWardrobeUI();
-    showWardrobeToast('Maniquí desvestido');
+    showWardrobeToast('Bebé en pañal');
   });
 
-  // Guardar Look
+  // Guardar Look (usando diálogo nativo en vez de window.prompt para compatibilidad con iFrame y WebView)
+  const saveLookModal = document.getElementById('modal-save-look') as HTMLDialogElement;
+  const lookNameInput = document.getElementById('input-look-name') as HTMLInputElement;
+
   document.getElementById('btn-save-look-trigger')?.addEventListener('click', () => {
     if (!wardrobeApp) return;
-    const { topId, bottomId, shoesId } = wardrobeApp.state.currentOutfit;
-    if (!topId && !bottomId && !shoesId) {
+    const { topId, bottomId, shoesId, accessoryId } = wardrobeApp.state.currentOutfit;
+    if (!topId && !bottomId && !shoesId && !accessoryId) {
       showWardrobeToast('Primero viste al bebé con al menos una prenda antes de guardar el look.');
       return;
     }
-    const name = prompt('Nombre para este conjunto (ej. Ropa de paseo, Pijama de noche):');
-    if (name) {
-      wardrobeApp.saveCurrentOutfit(name);
-      renderWardrobeUI();
-      showWardrobeToast('¡Look guardado en Mis Combinaciones!');
+    if (lookNameInput) lookNameInput.value = '';
+    saveLookModal?.showModal();
+  });
+
+  document.getElementById('btn-close-save-look')?.addEventListener('click', () => {
+    saveLookModal?.close();
+  });
+
+  document.getElementById('btn-confirm-save-look')?.addEventListener('click', () => {
+    if (!wardrobeApp) return;
+    const name = lookNameInput?.value.trim();
+    if (!name) {
+      showWardrobeToast('Escribe un nombre para guardar este conjunto');
+      return;
     }
+    wardrobeApp.saveCurrentOutfit(name);
+    saveLookModal?.close();
+    renderWardrobeUI();
+    showWardrobeToast('¡Look guardado en Mis Combinaciones!');
   });
 
   // Modal Subir Ropa
@@ -201,7 +333,22 @@ function setupEventListeners() {
   const colorInput = document.getElementById('input-clothing-color') as HTMLInputElement;
   const colorLabel = document.getElementById('color-hex-label');
 
+  const resetUploadModal = () => {
+    analyzedSubType = null;
+    if (fileInput) fileInput.value = '';
+    if (previewImg) {
+      previewImg.src = '';
+      previewImg.classList.add('hide');
+    }
+    if (uploadPrompt) uploadPrompt.classList.remove('hide');
+    const nameInput = document.getElementById('input-clothing-name') as HTMLInputElement;
+    if (nameInput) nameInput.value = '';
+    const catSelect = document.getElementById('select-clothing-category') as HTMLSelectElement;
+    if (catSelect && wardrobeApp) catSelect.value = wardrobeApp.state.activeCategory;
+  };
+
   document.getElementById('btn-upload-clothing')?.addEventListener('click', () => {
+    resetUploadModal();
     modal?.showModal();
   });
 
@@ -221,9 +368,8 @@ function setupEventListeners() {
     const file = (e.target as HTMLInputElement).files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64 = reader.result as string;
+    try {
+      const base64 = await compressImageBase64(file, 512);
       if (previewImg && uploadPrompt) {
         previewImg.src = base64;
         previewImg.classList.remove('hide');
@@ -238,12 +384,13 @@ function setupEventListeners() {
           body: JSON.stringify({ image: base64 })
         });
         const data = await res.json();
-        
+
         const nameInput = document.getElementById('input-clothing-name') as HTMLInputElement;
         const catSelect = document.getElementById('select-clothing-category') as HTMLSelectElement;
 
         if (nameInput && data.name) nameInput.value = data.name;
         if (catSelect && data.category) catSelect.value = data.category;
+        if (data.subType) analyzedSubType = data.subType;
         if (colorInput && data.dominantColor) {
           colorInput.value = data.dominantColor;
           if (colorLabel) colorLabel.textContent = data.dominantColor;
@@ -253,8 +400,9 @@ function setupEventListeners() {
       } finally {
         if (aiStatus) aiStatus.classList.add('hide');
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.warn('Error procesando imagen:', err);
+    }
   });
 
   // Confirmar añadir prenda
@@ -263,21 +411,40 @@ function setupEventListeners() {
     const nameInput = document.getElementById('input-clothing-name') as HTMLInputElement;
     const catSelect = document.getElementById('select-clothing-category') as HTMLSelectElement;
     const color = colorInput?.value || '#df7446';
-    const name = nameInput?.value.trim() || 'Prenda Nueva';
-    const category = catSelect?.value as ClothingCategory || 'tops';
+    const name = nameInput?.value.trim();
+    const category = (catSelect?.value as ClothingCategory) || 'tops';
     const photoUrl = previewImg?.src || '';
+
+    if (!name) {
+      showWardrobeToast('Escribe un nombre para tu prenda antes de guardarla');
+      return;
+    }
+
+    const defaultSubType =
+      category === 'tops' ? 'tshirt' :
+      category === 'bottoms' ? 'pants' :
+      category === 'shoes' ? 'shoes' : 'hat';
 
     wardrobeApp.addCustomClothing({
       name,
       category,
       color,
-      subType: category === 'tops' ? 'tshirt' : category === 'bottoms' ? 'pants' : 'shoes',
+      subType: analyzedSubType || defaultSubType,
       photoUrl: photoUrl.startsWith('data:') ? photoUrl : undefined
     });
 
     modal?.close();
     renderWardrobeUI();
-    showWardrobeToast(`¡"${name}" guardada y puesta en el bebé!`);
+    showWardrobeToast(`¡"${name}" guardada y puesta en tu bebé!`);
+  });
+}
+
+function updateFacePresetSelection() {
+  if (!wardrobeApp) return;
+  const activeUrl = wardrobeApp.state.babyFaceUrl;
+  document.querySelectorAll('[data-face-url]').forEach((btn) => {
+    const url = (btn as HTMLElement).dataset.faceUrl;
+    btn.classList.toggle('active', url === activeUrl);
   });
 }
 
@@ -298,16 +465,16 @@ function renderWardrobeUI() {
       tops: '👕 Tops, Poleras & Bodys',
       bottoms: '👖 Pantalones, Shorts & Faldas',
       shoes: '👟 Zapatitos & Calzado',
-      accessories: '🧢 Gorritos & Accesorios'
+      accessories: '🧢 Gorritos & Baberos'
     };
     catTitleEl.textContent = titles[activeCategory];
   }
 
-  // 2. Carrusel de Prendas
+  // 2. Carrusel de Prendas Reales
   const carousel = document.getElementById('clothing-carousel');
   if (carousel) {
     const filteredItems = items.filter(i => i.category === activeCategory);
-    
+
     let html = `
       <button id="btn-add-quick" class="clothing-card add-card">
         <span class="card-add-icon">➕</span>
@@ -370,7 +537,7 @@ function renderWardrobeUI() {
     });
 
     document.getElementById('btn-add-quick')?.addEventListener('click', () => {
-      (document.getElementById('modal-upload-clothing') as HTMLDialogElement)?.showModal();
+      document.getElementById('btn-upload-clothing')?.click();
     });
   }
 
