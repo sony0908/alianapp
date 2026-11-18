@@ -1,11 +1,14 @@
-// Handler serverless para Vercel y Express
+// Handler serverless para analizar ropa con Gemini usando fetch nativo (sin dependencias externas en Vercel)
 module.exports = async function handler(request, response) {
   if (request.method !== 'POST') {
     return response.status(405).json({ error: 'Método no permitido' });
   }
 
   try {
-    const body = typeof request.body === 'string' ? JSON.parse(request.body || '{}') : (request.body || {});
+    const body =
+      typeof request.body === 'string'
+        ? JSON.parse(request.body || '{}')
+        : request.body || {};
     const { image } = body;
 
     if (!image) {
@@ -14,7 +17,6 @@ module.exports = async function handler(request, response) {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      // Fallback inteligente si no hay API key configurada
       return response.status(200).json({
         category: 'tops',
         name: 'Prenda de Bebé',
@@ -22,15 +24,10 @@ module.exports = async function handler(request, response) {
         secondaryColor: '#ffffff',
         subType: 'bodysuit',
         pattern: 'solid',
-        season: 'all'
+        season: 'all',
       });
     }
 
-    // Dynamic import de @google/genai para compatibilidad con ESM
-    const { GoogleGenAI } = await import('@google/genai');
-    const ai = new GoogleGenAI({ apiKey });
-
-    // Limpiar data URL prefix si viene incluido
     const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
 
     const prompt = `Analiza esta foto de una prenda de ropa de bebé o infantil. Devuelve ÚNICAMENTE un objeto JSON válido con los siguientes campos:
@@ -44,34 +41,43 @@ module.exports = async function handler(request, response) {
   "season": "summer" | "winter" | "all"
 }`;
 
-    const res = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: prompt },
+    const gcRes = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          contents: [
             {
-              inlineData: {
-                mimeType: 'image/jpeg',
-                data: base64Data
-              }
-            }
-          ]
-        }
-      ],
-      config: {
-        responseMimeType: 'application/json'
+              role: 'user',
+              parts: [
+                { text: prompt },
+                {
+                  inline_data: {
+                    mime_type: 'image/jpeg',
+                    data: base64Data,
+                  },
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: 'application/json',
+          },
+        }),
       }
-    });
+    );
 
-    const text = res.text?.trim() || '{}';
-    const parsed = JSON.parse(text);
+    const gcJson = await gcRes.json().catch(() => ({}));
+    const rawText = gcJson?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    const parsed = JSON.parse(rawText.trim());
 
     return response.status(200).json(parsed);
   } catch (err) {
     console.error('Error analizando prenda con Gemini:', err);
-    // En caso de error de modelo, devolver clasificación por defecto
     return response.status(200).json({
       category: 'tops',
       name: 'Prenda Bebé',
@@ -79,7 +85,7 @@ module.exports = async function handler(request, response) {
       secondaryColor: '#ffffff',
       subType: 'bodysuit',
       pattern: 'solid',
-      season: 'all'
+      season: 'all',
     });
   }
 };

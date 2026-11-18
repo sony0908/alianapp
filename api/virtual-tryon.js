@@ -1,8 +1,51 @@
-const fs = require('fs');
-const path = require('path');
-
 // Handler serverless para generar UNA SOLA IMAGEN COMPLETA DEL CONJUNTO (sin unir recortes)
 // manteniendo las reglas estrictas del modelo base de tu hijo en el estudio.
+// Usa fetch nativo (sin depender de fs ni paquetes ESM externos en Vercel) y soporta
+// tanto la API Interactions (gemini-nano-banana-2.1 / gemini-3.1-flash-image) como generateContent.
+
+function extractImageFromInteraction(interaction) {
+  if (interaction?.output_image?.data) {
+    return {
+      data: interaction.output_image.data,
+      mimeType: interaction.output_image.mime_type || 'image/jpeg',
+    };
+  }
+  const steps = interaction?.steps || [];
+  for (const step of steps) {
+    for (const part of step.content || []) {
+      if (part.type === 'image' && part.data) {
+        return { data: part.data, mimeType: part.mime_type || 'image/jpeg' };
+      }
+      if (part.inlineData?.data) {
+        return {
+          data: part.inlineData.data,
+          mimeType: part.inlineData.mimeType || 'image/jpeg',
+        };
+      }
+    }
+  }
+  return null;
+}
+
+function extractImageFromGenerateContent(result) {
+  const parts = result?.candidates?.[0]?.content?.parts || [];
+  for (const part of parts) {
+    if (part.inlineData?.data) {
+      return {
+        data: part.inlineData.data,
+        mimeType: part.inlineData.mimeType || 'image/jpeg',
+      };
+    }
+    if (part.inline_data?.data) {
+      return {
+        data: part.inline_data.data,
+        mimeType: part.inline_data.mime_type || 'image/jpeg',
+      };
+    }
+  }
+  return null;
+}
+
 module.exports = async function handler(request, response) {
   if (request.method !== 'POST') {
     return response.status(405).json({ error: 'Método no permitido' });
@@ -11,7 +54,8 @@ module.exports = async function handler(request, response) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return response.status(503).json({
-      error: 'Configura GEMINI_API_KEY en Vercel para generar conjuntos nuevos con IA.',
+      error:
+        'Falta configurar la variable GEMINI_API_KEY en tu panel de Vercel (Settings > Environment Variables) para generar fotos nuevas con IA.',
     });
   }
 
@@ -21,7 +65,6 @@ module.exports = async function handler(request, response) {
         ? JSON.parse(request.body || '{}')
         : request.body || {};
 
-    // Soporta tanto conjunto completo (items: [{ category, name, color, subType, photoUrl }]) como una prenda individual
     const items = Array.isArray(body.items)
       ? body.items
       : body.garmentDescription
@@ -35,22 +78,27 @@ module.exports = async function handler(request, response) {
         : [];
 
     if (items.length === 0) {
-      return response.status(400).json({ error: 'Selecciona al menos una prenda para generar el conjunto.' });
+      return response.status(400).json({
+        error: 'Selecciona al menos una prenda para generar el conjunto.',
+      });
     }
 
-    // Leer el retrato base estricto de estudio del bebé
-    const studioPathCandidates = [
-      path.resolve(process.cwd(), 'public', 'bichito-studio-standing.jpg'),
-      path.resolve(process.cwd(), 'dist', 'bichito-studio-standing.jpg'),
-    ];
-    const studioPath = studioPathCandidates.find((p) => fs.existsSync(p));
-    if (!studioPath) {
-      return response.status(500).json({ error: 'No se encontró la imagen base de estudio.' });
+    // Obtener la imagen base de estudio del bebé (desde el body enviado por el cliente o por HTTP desde el mismo host)
+    let baseBabyBase64 = '';
+    if (body.baseModelImage && typeof body.baseModelImage === 'string') {
+      baseBabyBase64 = body.baseModelImage.replace(/^data:image\/\w+;base64,/, '');
+    } else {
+      const proto = request.headers['x-forwarded-proto'] || 'https';
+      const host = request.headers.host || 'alianapp.vercel.app';
+      const baseRes = await fetch(`${proto}://${host}/bichito-studio-standing.jpg`);
+      if (!baseRes.ok) {
+        return response.status(500).json({
+          error: 'No se pudo cargar la foto base de estudio del bebé.',
+        });
+      }
+      const arrBuf = await baseRes.arrayBuffer();
+      baseBabyBase64 = Buffer.from(arrBuf).toString('base64');
     }
-    const baseBabyBase64 = fs.readFileSync(studioPath).toString('base64');
-
-    const { GoogleGenAI } = await import('@google/genai');
-    const ai = new GoogleGenAI({ apiKey });
 
     const outfitLines = items.map((it, idx) => {
       const catLabel =
@@ -68,9 +116,7 @@ module.exports = async function handler(request, response) {
     const hasBottom = items.some((i) => i.category === 'bottoms');
     const hasShoes = items.some((i) => i.category === 'shoes');
 
-    const parts = [
-      {
-        text: `Edit the first studio photograph of this exact standing 7-month-old baby boy.
+    const promptText = `Edit the first studio photograph of this exact standing 7-month-old baby boy.
 STRICT MODEL PRESERVATION RULES:
 - Keep his exact adorable face, facial expression, eyes, nose, smile, head tilt, wavy jet-black hair, hand positions, leg stance, body proportions, and warm cream studio background (#fff8f2) 100% identical to the first reference photograph.
 - Generate ONE SINGLE COHESIVE FULL-BODY PHOTOGRAPH of him wearing the following complete outfit naturally fitted together (never paste or cut separate regions):
@@ -80,68 +126,123 @@ ${outfitLines.join('\n')}
   ${!hasBottom ? '- Keep his white quilted baby diaper visible on his lower body.' : ''}
   ${hasBottom && hasShoes ? '- The ankle cuffs of the pants and the socks/shoes must meet seamlessly with zero blur or cutoff.' : ''}
   ${!hasShoes ? '- Keep his bare feet and baby toes clearly visible.' : ''}
-- Photorealistic cotton/knit textures, natural studio lighting and soft shadows.`,
-      },
-      {
-        inlineData: {
-          mimeType: 'image/jpeg',
-          data: baseBabyBase64,
-        },
-      },
-    ];
+- Photorealistic cotton/knit textures, natural studio lighting and soft shadows.`;
 
-    // Adjuntar fotos de referencia de las prendas si están disponibles
+    // Recolectar imágenes de referencia de las prendas (en base64 enviadas por el cliente)
+    const refImagesBase64 = [];
     for (const it of items) {
-      const url = it.photoUrl || it.tryOnUrl || '';
+      const url = it.photoUrl || '';
       if (url.startsWith('data:image/')) {
-        const cleanData = url.replace(/^data:image\/\w+;base64,/, '');
-        parts.push({
-          inlineData: {
-            mimeType: 'image/jpeg',
-            data: cleanData,
-          },
-        });
-      } else if (url.startsWith('/')) {
-        const localFile = [
-          path.resolve(process.cwd(), 'public', url.slice(1)),
-          path.resolve(process.cwd(), 'dist', url.slice(1)),
-        ].find((p) => fs.existsSync(p));
-        if (localFile) {
-          parts.push({
-            inlineData: {
-              mimeType: 'image/jpeg',
-              data: fs.readFileSync(localFile).toString('base64'),
-            },
-          });
-        }
+        refImagesBase64.push(url.replace(/^data:image\/\w+;base64,/, ''));
       }
     }
 
-    const res = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents: [{ role: 'user', parts }],
-      config: {
-        responseModalities: ['TEXT', 'IMAGE'],
-      },
-    });
+    let lastErrorDetail = '';
 
-    const candidateParts = res.candidates?.[0]?.content?.parts || [];
-    const imagePart = candidateParts.find((p) => p.inlineData && p.inlineData.data);
+    // 1. Intentar con la API moderna Interactions (gemini-nano-banana-2.1 y gemini-3.1-flash-image)
+    const interactionModels = ['gemini-nano-banana-2.1', 'gemini-3.1-flash-image', 'gemini-2.5-flash-image'];
+    for (const modelName of interactionModels) {
+      try {
+        const inputArr = [
+          { type: 'text', text: promptText },
+          { type: 'image', mime_type: 'image/jpeg', data: baseBabyBase64 },
+          ...refImagesBase64.map((b64) => ({
+            type: 'image',
+            mime_type: 'image/jpeg',
+            data: b64,
+          })),
+        ];
 
-    if (!imagePart) {
-      return response.status(502).json({
-        error: 'Gemini no devolvió una imagen generada.',
-      });
+        const intRes = await fetch(
+          'https://generativelanguage.googleapis.com/v1beta/interactions',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': apiKey,
+              'Api-Revision': '2026-05-20',
+            },
+            body: JSON.stringify({
+              model: modelName,
+              store: false,
+              input: inputArr,
+              response_format: {
+                type: 'image',
+                mime_type: 'image/jpeg',
+                aspect_ratio: '3:4',
+              },
+            }),
+          }
+        );
+
+        const intJson = await intRes.json().catch(() => ({}));
+        if (intRes.ok) {
+          const extracted = extractImageFromInteraction(intJson);
+          if (extracted) {
+            return response.status(200).json({
+              tryOnImage: `data:${extracted.mimeType};base64,${extracted.data}`,
+            });
+          }
+        } else {
+          lastErrorDetail = intJson?.error?.message || `HTTP ${intRes.status}`;
+        }
+      } catch (e) {
+        lastErrorDetail = e.message || String(e);
+      }
     }
 
-    const mime = imagePart.inlineData.mimeType || 'image/jpeg';
-    return response.status(200).json({
-      tryOnImage: `data:${mime};base64,${imagePart.inlineData.data}`,
+    // 2. Fallback por generateContent REST directo
+    const genContentModels = ['gemini-2.5-flash-image', 'gemini-2.0-flash-exp-image-generation'];
+    for (const modelName of genContentModels) {
+      try {
+        const parts = [
+          { text: promptText },
+          { inline_data: { mime_type: 'image/jpeg', data: baseBabyBase64 } },
+          ...refImagesBase64.map((b64) => ({
+            inline_data: { mime_type: 'image/jpeg', data: b64 },
+          })),
+        ];
+
+        const gcRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': apiKey,
+            },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts }],
+              generationConfig: {
+                responseModalities: ['TEXT', 'IMAGE'],
+              },
+            }),
+          }
+        );
+
+        const gcJson = await gcRes.json().catch(() => ({}));
+        if (gcRes.ok) {
+          const extracted = extractImageFromGenerateContent(gcJson);
+          if (extracted) {
+            return response.status(200).json({
+              tryOnImage: `data:${extracted.mimeType};base64,${extracted.data}`,
+            });
+          }
+        } else {
+          lastErrorDetail = gcJson?.error?.message || `HTTP ${gcRes.status}`;
+        }
+      } catch (e) {
+        lastErrorDetail = e.message || String(e);
+      }
+    }
+
+    return response.status(502).json({
+      error: `No se pudo generar la imagen con Gemini (${lastErrorDetail || 'Verifica tu GEMINI_API_KEY y cuota en Google AI Studio'}).`,
     });
   } catch (err) {
     console.error('Error en /api/virtual-tryon:', err);
     return response.status(500).json({
-      error: 'No se pudo generar la imagen completa del conjunto con IA en este momento.',
+      error: `Error interno al generar conjunto: ${err.message || 'desconocido'}`,
     });
   }
 };
