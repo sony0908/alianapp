@@ -1,1 +1,4 @@
-bichito-site.tar.gz
+node_modules/
+.env
+.env.*
+.DS_Store

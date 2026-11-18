@@ -253,7 +253,7 @@ export class BabyStyle3D {
           savedOutfits: Array.isArray(parsed.savedOutfits) ? parsed.savedOutfits : [],
           activeCategory: 'tops',
           backgroundTheme: parsed.backgroundTheme || 'studio',
-          faceMode: parsed.faceMode === 'photo' ? 'photo' : 'sculpted3d',
+          faceMode: parsed.faceMode || 'photo',
           babyFaceUrl: parsed.babyFaceUrl || DEFAULT_BABY_FACE_URL,
           skinPreset: parsed.skinPreset && SKIN_PRESETS[parsed.skinPreset as SkinPresetKey] ? parsed.skinPreset : 'warm',
           eyePreset: parsed.eyePreset && EYE_PRESETS[parsed.eyePreset as EyePresetKey] ? parsed.eyePreset : 'brown',
@@ -270,7 +270,7 @@ export class BabyStyle3D {
       savedOutfits: [],
       activeCategory: 'tops',
       backgroundTheme: 'studio',
-      faceMode: 'sculpted3d',
+      faceMode: 'photo',
       babyFaceUrl: DEFAULT_BABY_FACE_URL,
       skinPreset: 'warm',
       eyePreset: 'brown',
@@ -503,37 +503,39 @@ export class BabyStyle3D {
         v.z -= 0.026 * Math.min(1, socket);
       }
 
-      // Mejillas gorditas y suaves (silueta característica de bebé real)
-      if (v.z > 0.04 && v.y < 0.02 && v.y > -0.25) {
-        const cheekL = Math.exp(-Math.pow((v.x - 0.175) / 0.11, 2)) * Math.exp(-Math.pow((v.y + 0.095) / 0.095, 2));
-        const cheekR = Math.exp(-Math.pow((v.x + 0.175) / 0.11, 2)) * Math.exp(-Math.pow((v.y + 0.095) / 0.095, 2));
+      // Mejillas bien redonditas y llenas (silueta real de tu hijo en las fotos)
+      if (v.z > 0.02 && v.y < 0.04 && v.y > -0.26) {
+        const cheekL = Math.exp(-Math.pow((v.x - 0.182) / 0.125, 2)) * Math.exp(-Math.pow((v.y + 0.092) / 0.105, 2));
+        const cheekR = Math.exp(-Math.pow((v.x + 0.182) / 0.125, 2)) * Math.exp(-Math.pow((v.y + 0.092) / 0.105, 2));
         const cheek = cheekL + cheekR;
-        v.x += Math.sign(v.x) * 0.024 * cheek;
-        v.z += 0.032 * cheek;
+        v.x += Math.sign(v.x) * 0.038 * cheek;
+        v.z += 0.036 * cheek;
       }
 
-      // Naricita respingona de botón + puente nasal suave
-      if (v.z > 0.24 && Math.abs(v.x) < 0.075 && v.y > -0.10 && v.y < 0.04) {
-        const bridge = Math.exp(-Math.pow(v.x / 0.034, 2)) * Math.exp(-Math.pow((v.y - 0.005) / 0.04, 2));
-        const tip = Math.exp(-Math.pow(v.x / 0.046, 2)) * Math.exp(-Math.pow((v.y + 0.056) / 0.032, 2));
-        const wingL = Math.exp(-Math.pow((v.x - 0.035) / 0.022, 2)) * Math.exp(-Math.pow((v.y + 0.064) / 0.022, 2));
-        const wingR = Math.exp(-Math.pow((v.x + 0.035) / 0.022, 2)) * Math.exp(-Math.pow((v.y + 0.064) / 0.022, 2));
-        v.z += 0.016 * bridge + 0.038 * tip + 0.016 * (wingL + wingR);
+      // Naricita redondeada de botón + puente nasal suave
+      if (v.z > 0.24 && Math.abs(v.x) < 0.082 && v.y > -0.10 && v.y < 0.04) {
+        const bridge = Math.exp(-Math.pow(v.x / 0.038, 2)) * Math.exp(-Math.pow((v.y - 0.005) / 0.04, 2));
+        const tip = Math.exp(-Math.pow(v.x / 0.052, 2)) * Math.exp(-Math.pow((v.y + 0.054) / 0.034, 2));
+        const wingL = Math.exp(-Math.pow((v.x - 0.038) / 0.024, 2)) * Math.exp(-Math.pow((v.y + 0.064) / 0.022, 2));
+        const wingR = Math.exp(-Math.pow((v.x + 0.038) / 0.024, 2)) * Math.exp(-Math.pow((v.y + 0.064) / 0.022, 2));
+        v.z += 0.015 * bridge + 0.036 * tip + 0.018 * (wingL + wingR);
       }
 
-      // Labios esculpidos con arco de cupido y boquita tierna
-      if (v.z > 0.24 && Math.abs(v.x) < 0.085 && v.y > -0.19 && v.y < -0.09) {
-        const upperLip = Math.exp(-Math.pow(v.x / 0.055, 2)) * Math.exp(-Math.pow((v.y + 0.125) / 0.016, 2));
-        const seam = Math.exp(-Math.pow(v.x / 0.058, 2)) * Math.exp(-Math.pow((v.y + 0.141) / 0.009, 2));
-        const lowerLip = Math.exp(-Math.pow(v.x / 0.048, 2)) * Math.exp(-Math.pow((v.y + 0.158) / 0.018, 2));
-        v.z += 0.015 * upperLip - 0.010 * seam + 0.014 * lowerLip;
+      // Labios sonrientes suaves con comisuras ligeramente elevadas
+      if (v.z > 0.24 && Math.abs(v.x) < 0.095 && v.y > -0.19 && v.y < -0.085) {
+        const smileLift = (v.x * v.x) * 1.4;
+        const vy = v.y - smileLift;
+        const upperLip = Math.exp(-Math.pow(v.x / 0.058, 2)) * Math.exp(-Math.pow((vy + 0.125) / 0.016, 2));
+        const seam = Math.exp(-Math.pow(v.x / 0.062, 2)) * Math.exp(-Math.pow((vy + 0.141) / 0.009, 2));
+        const lowerLip = Math.exp(-Math.pow(v.x / 0.052, 2)) * Math.exp(-Math.pow((vy + 0.158) / 0.018, 2));
+        v.z += 0.016 * upperLip - 0.011 * seam + 0.015 * lowerLip;
       }
 
-      // Barbilla redonda suave y papada tierna
-      if (v.y < -0.17) {
-        const chin = Math.exp(-Math.pow(v.x / 0.10, 2)) * Math.exp(-Math.pow((v.y + 0.225) / 0.055, 2));
-        if (v.z > 0.12) v.z += 0.014 * chin;
-        v.y *= 0.94;
+      // Barbilla redonda suave y papada tierna de bebé
+      if (v.y < -0.16) {
+        const chin = Math.exp(-Math.pow(v.x / 0.115, 2)) * Math.exp(-Math.pow((v.y + 0.222) / 0.062, 2));
+        if (v.z > 0.10) v.z += 0.018 * chin;
+        v.y *= 0.93;
       }
 
       // Volumen posterior craneal anatómico
@@ -1579,37 +1581,48 @@ export class BabyStyle3D {
       const ctx = canvas.getContext('2d')!;
 
       const skin = SKIN_PRESETS[this.state.skinPreset];
+      const hair = HAIR_PRESETS[this.state.hairPreset];
       ctx.fillStyle = skin.base;
       ctx.fillRect(0, 0, texW, texH);
 
+      // Sombreado craneal superior y nuca del mismo color del pelo para integración 360° perfecta
+      const scalpGrad = ctx.createLinearGradient(0, 0, 0, texH * 0.44);
+      scalpGrad.addColorStop(0, hair.base);
+      scalpGrad.addColorStop(0.58, hair.base);
+      scalpGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = scalpGrad;
+      ctx.fillRect(0, 0, texW, texH * 0.44);
+
       const faceCanvas = document.createElement('canvas');
-      const faceW = 340;
-      const faceH = 310;
+      const faceW = 350;
+      const faceH = 330;
       faceCanvas.width = faceW;
       faceCanvas.height = faceH;
       const fCtx = faceCanvas.getContext('2d')!;
 
-      const minSide = Math.min(img.width, img.height);
-      const sx = (img.width - minSide) / 2;
-      const sy = (img.height - minSide) / 2;
+      // Recortamos la zona facial central (frente, cejas, ojos, mejillas, nariz y sonrisa) evitando los hombros
+      const sx = img.width * 0.16;
+      const sy = img.height * 0.22;
+      const sw = img.width * 0.68;
+      const sh = img.height * 0.64;
       fCtx.save();
-      fCtx.filter = 'brightness(1.10) saturate(0.95)';
-      fCtx.drawImage(img, sx, sy, minSide, minSide, 0, 0, faceW, faceH);
+      fCtx.filter = 'brightness(1.03) contrast(1.03) saturate(1.02)';
+      fCtx.drawImage(img, sx, sy, sw, sh, 0, 0, faceW, faceH);
       fCtx.restore();
 
       fCtx.globalCompositeOperation = 'destination-in';
       const maskGrad = fCtx.createRadialGradient(
-        faceW * 0.5, faceH * 0.47, faceW * 0.21,
-        faceW * 0.5, faceH * 0.49, faceW * 0.48
+        faceW * 0.5, faceH * 0.50, faceW * 0.24,
+        faceW * 0.5, faceH * 0.50, faceW * 0.48
       );
       maskGrad.addColorStop(0.0, 'rgba(0,0,0,1)');
-      maskGrad.addColorStop(0.58, 'rgba(0,0,0,0.95)');
-      maskGrad.addColorStop(0.84, 'rgba(0,0,0,0.42)');
+      maskGrad.addColorStop(0.66, 'rgba(0,0,0,0.97)');
+      maskGrad.addColorStop(0.86, 'rgba(0,0,0,0.45)');
       maskGrad.addColorStop(1.0, 'rgba(0,0,0,0)');
       fCtx.fillStyle = maskGrad;
       fCtx.fillRect(0, 0, faceW, faceH);
 
-      ctx.drawImage(faceCanvas, texW * 0.5 - faceW * 0.5, texH * 0.53 - faceH * 0.5, faceW, faceH);
+      ctx.drawImage(faceCanvas, texW * 0.5 - faceW * 0.5, texH * 0.54 - faceH * 0.5, faceW, faceH);
 
       if (this.activePhotoFaceTexture) this.activePhotoFaceTexture.dispose();
       const texture = new THREE.CanvasTexture(canvas);

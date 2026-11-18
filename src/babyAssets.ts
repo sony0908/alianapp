@@ -32,12 +32,12 @@ export interface HairPreset {
 
 export const SKIN_PRESETS: Record<SkinPresetKey, SkinPreset> = {
   warm: {
-    label: 'Cálido natural',
-    base: '#e3ac90',
-    blush: '#df7b6f',
-    crease: '#be7c60',
-    lip: '#d1716a',
-    sheen: '#ffd0bc',
+    label: 'Trigueño rosado (Bichito)',
+    base: '#e5af92',
+    blush: '#df7568',
+    crease: '#bc795d',
+    lip: '#ca6862',
+    sheen: '#ffd5c2',
   },
   rosy: {
     label: 'Rosado suave',
@@ -59,11 +59,11 @@ export const SKIN_PRESETS: Record<SkinPresetKey, SkinPreset> = {
 
 export const EYE_PRESETS: Record<EyePresetKey, EyePreset> = {
   brown: {
-    label: 'Café oscuro',
-    outer: '#1a100a',
-    mid: '#3f2617',
-    inner: '#6e4526',
-    fleck: '#a87442',
+    label: 'Café muy oscuro (Bichito)',
+    outer: '#110a07',
+    mid: '#28170e',
+    inner: '#492b18',
+    fleck: '#7c4e2b',
   },
   hazel: {
     label: 'Miel cálido',
@@ -83,12 +83,12 @@ export const EYE_PRESETS: Record<EyePresetKey, EyePreset> = {
 
 export const HAIR_PRESETS: Record<HairPresetKey, HairPreset> = {
   'dark-curls': {
-    label: 'Rizos oscuros',
+    label: 'Azabache ondulado (Bichito)',
     style: 'curls',
-    base: '#1e1613',
-    highlight: '#382a23',
-    sheen: '#5c473c',
-    brow: '#231915',
+    base: '#120e0d',
+    highlight: '#27201e',
+    sheen: '#453833',
+    brow: '#181210',
   },
   'blonde-swoop': {
     label: 'Rubio sedoso',
@@ -145,7 +145,7 @@ export function createSkinBumpTexture(): THREE.CanvasTexture {
   return tex;
 }
 
-// Textura anatómica de rostro 3D con rubor en mejillas, sombreado suave en cuencas oculares, nariz, labios y nacimiento del pelo
+// Textura anatómica de rostro 3D con rubor en mejillas, sombreado suave en cuencas oculares, nariz, labios sonrientes y nacimiento del pelo
 export function createSculptedHeadSkinTexture(skin: SkinPreset, hair: HairPreset): THREE.CanvasTexture {
   const w = 1024;
   const h = 1024;
@@ -167,104 +167,110 @@ export function createSculptedHeadSkinTexture(skin: SkinPreset, hair: HairPreset
   ctx.fillRect(0, 0, w, h);
 
   // 3. Iluminación suave en frente y puente nasal (subsurface scatter glow)
-  const foreheadGlow = ctx.createRadialGradient(w * 0.5, h * 0.36, 10, w * 0.5, h * 0.38, 120);
-  foreheadGlow.addColorStop(0, rgba(skin.sheen, 0.36));
+  const foreheadGlow = ctx.createRadialGradient(w * 0.5, h * 0.36, 10, w * 0.5, h * 0.38, 128);
+  foreheadGlow.addColorStop(0, rgba(skin.sheen, 0.38));
   foreheadGlow.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = foreheadGlow;
-  ctx.fillRect(w * 0.34, h * 0.22, w * 0.32, h * 0.28);
+  ctx.fillRect(w * 0.32, h * 0.22, w * 0.36, h * 0.28);
 
-  // 4. Cuencas oculares con oclusión ambiental muy suave (para que los ojos 3D encajen naturalmente)
+  // 4. Cuencas oculares almendradas con oclusión ambiental muy suave
   [-1, 1].forEach((side) => {
     const ex = w * (0.5 + side * 0.062);
     const ey = h * 0.485;
-    const socketGrad = ctx.createRadialGradient(ex, ey, 14, ex, ey, 54);
-    socketGrad.addColorStop(0, rgba(skin.crease, 0.42));
-    socketGrad.addColorStop(0.55, rgba(skin.crease, 0.16));
+    const socketGrad = ctx.createRadialGradient(ex, ey, 12, ex, ey, 50);
+    socketGrad.addColorStop(0, rgba(skin.crease, 0.36));
+    socketGrad.addColorStop(0.55, rgba(skin.crease, 0.14));
     socketGrad.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = socketGrad;
     ctx.beginPath();
-    ctx.ellipse(ex, ey, 54, 44, 0, 0, Math.PI * 2);
+    ctx.ellipse(ex, ey, 52, 38, 0, 0, Math.PI * 2);
     ctx.fill();
   });
 
-  // 5. Rubor tierno en mejillas (gradiente amplio y difuso como bebé real)
+  // 5. Rubor tierno y cálido en sus mejillas redonditas (como en las fotos reales)
   [-1, 1].forEach((side) => {
-    const cx = w * (0.5 + side * 0.082);
-    const cy = h * 0.578;
-    const blushGrad = ctx.createRadialGradient(cx, cy, 8, cx, cy, 86);
-    blushGrad.addColorStop(0, rgba(skin.blush, 0.58));
-    blushGrad.addColorStop(0.45, rgba(skin.blush, 0.30));
+    const cx = w * (0.5 + side * 0.086);
+    const cy = h * 0.575;
+    const blushGrad = ctx.createRadialGradient(cx, cy, 8, cx, cy, 95);
+    blushGrad.addColorStop(0, rgba(skin.blush, 0.66));
+    blushGrad.addColorStop(0.48, rgba(skin.blush, 0.34));
     blushGrad.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = blushGrad;
     ctx.beginPath();
-    ctx.ellipse(cx, cy, 88, 68, side * 0.12, 0, Math.PI * 2);
+    ctx.ellipse(cx, cy, 96, 74, side * 0.10, 0, Math.PI * 2);
     ctx.fill();
+
+    // Hoyuelo de sonrisa suave al costado de las mejillas
+    ctx.strokeStyle = rgba(skin.crease, 0.26);
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.arc(w * (0.5 + side * 0.036), h * 0.618, 16, side > 0 ? -0.5 : Math.PI - 0.5, side > 0 ? 0.6 : Math.PI + 0.6);
+    ctx.stroke();
   });
 
-  // 6. Toque rosado en la puntita de la nariz y sombreado sutil debajo de la nariz
-  const noseTipGrad = ctx.createRadialGradient(w * 0.5, h * 0.548, 2, w * 0.5, h * 0.548, 26);
-  noseTipGrad.addColorStop(0, rgba(skin.blush, 0.38));
+  // 6. Toque rosado en la puntita de la nariz ancha de botón y sombreado sutil debajo
+  const noseTipGrad = ctx.createRadialGradient(w * 0.5, h * 0.548, 2, w * 0.5, h * 0.548, 30);
+  noseTipGrad.addColorStop(0, rgba(skin.blush, 0.42));
   noseTipGrad.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = noseTipGrad;
   ctx.beginPath();
-  ctx.arc(w * 0.5, h * 0.548, 26, 0, Math.PI * 2);
+  ctx.ellipse(w * 0.5, h * 0.548, 32, 24, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // Fosas nasales suaves y sombra bajo la nariz
-  ctx.fillStyle = rgba(skin.crease, 0.52);
+  ctx.fillStyle = rgba(skin.crease, 0.54);
   [-1, 1].forEach((side) => {
     ctx.beginPath();
-    ctx.ellipse(w * (0.5 + side * 0.0095), h * 0.563, 4.5, 2.6, side * -0.25, 0, Math.PI * 2);
+    ctx.ellipse(w * (0.5 + side * 0.0115), h * 0.563, 5.2, 3.0, side * -0.25, 0, Math.PI * 2);
     ctx.fill();
   });
 
-  // 7. Labios tiernos y rosados con arco de cupido sutil
-  const mouthY = h * 0.625;
-  const lipGrad = ctx.createRadialGradient(w * 0.5, mouthY, 3, w * 0.5, mouthY, 34);
-  lipGrad.addColorStop(0, rgba(skin.lip, 0.78));
-  lipGrad.addColorStop(0.65, rgba(skin.lip, 0.35));
+  // 7. Sonrisa tierna entreabierta característica de Bichito
+  const mouthY = h * 0.624;
+  const lipGrad = ctx.createRadialGradient(w * 0.5, mouthY, 3, w * 0.5, mouthY, 38);
+  lipGrad.addColorStop(0, rgba(skin.lip, 0.85));
+  lipGrad.addColorStop(0.65, rgba(skin.lip, 0.38));
   lipGrad.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = lipGrad;
   ctx.beginPath();
-  ctx.ellipse(w * 0.5, mouthY, 30, 14, 0, 0, Math.PI * 2);
+  ctx.ellipse(w * 0.5, mouthY, 35, 16, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Línea suave de sonrisa y pliegue bajo el labio inferior
-  ctx.strokeStyle = rgba(skin.crease, 0.52);
-  ctx.lineWidth = 2.2;
-  ctx.lineCap = 'round';
+  // Interior de sonrisa feliz suave
+  ctx.fillStyle = 'rgba(115, 42, 42, 0.68)';
   ctx.beginPath();
-  ctx.moveTo(w * 0.478, mouthY - 1);
-  ctx.quadraticCurveTo(w * 0.5, mouthY + 3, w * 0.522, mouthY - 1);
-  ctx.stroke();
+  ctx.moveTo(w * 0.472, mouthY - 2);
+  ctx.quadraticCurveTo(w * 0.5, mouthY + 9, w * 0.528, mouthY - 2);
+  ctx.quadraticCurveTo(w * 0.5, mouthY + 2, w * 0.472, mouthY - 2);
+  ctx.fill();
 
-  const chinFold = ctx.createRadialGradient(w * 0.5, h * 0.656, 2, w * 0.5, h * 0.656, 24);
-  chinFold.addColorStop(0, rgba(skin.crease, 0.24));
+  const chinFold = ctx.createRadialGradient(w * 0.5, h * 0.662, 2, w * 0.5, h * 0.662, 28);
+  chinFold.addColorStop(0, rgba(skin.crease, 0.28));
   chinFold.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = chinFold;
-  ctx.fillRect(w * 0.45, h * 0.63, w * 0.1, h * 0.05);
+  ctx.fillRect(w * 0.44, h * 0.635, w * 0.12, h * 0.055);
 
-  // 8. Sombra suave de nacimiento del cabello en coronilla y nuca (para que no haya borde duro debajo del pelo 3D)
-  const scalpGrad = ctx.createLinearGradient(0, 0, 0, h * 0.44);
-  scalpGrad.addColorStop(0, rgba(hair.base, 0.92));
-  scalpGrad.addColorStop(0.55, rgba(hair.base, 0.68));
-  scalpGrad.addColorStop(0.78, rgba(hair.base, 0.22));
+  // 8. Sombra suave de nacimiento del cabello abundante en coronilla, sienes y nuca
+  const scalpGrad = ctx.createLinearGradient(0, 0, 0, h * 0.45);
+  scalpGrad.addColorStop(0, rgba(hair.base, 0.96));
+  scalpGrad.addColorStop(0.58, rgba(hair.base, 0.78));
+  scalpGrad.addColorStop(0.82, rgba(hair.base, 0.28));
   scalpGrad.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = scalpGrad;
-  ctx.fillRect(0, 0, w, h * 0.44);
+  ctx.fillRect(0, 0, w, h * 0.45);
 
-  // Cubrir nuca suavemente en los laterales u < 0.26 y u > 0.74
-  const leftNape = ctx.createLinearGradient(w * 0.28, 0, w * 0.16, 0);
+  // Cubrir nuca y patillas suavemente en los laterales
+  const leftNape = ctx.createLinearGradient(w * 0.30, 0, w * 0.16, 0);
   leftNape.addColorStop(0, 'rgba(0,0,0,0)');
-  leftNape.addColorStop(1, rgba(hair.base, 0.85));
+  leftNape.addColorStop(1, rgba(hair.base, 0.92));
   ctx.fillStyle = leftNape;
-  ctx.fillRect(0, h * 0.16, w * 0.30, h * 0.42);
+  ctx.fillRect(0, h * 0.14, w * 0.32, h * 0.46);
 
-  const rightNape = ctx.createLinearGradient(w * 0.72, 0, w * 0.84, 0);
+  const rightNape = ctx.createLinearGradient(w * 0.70, 0, w * 0.84, 0);
   rightNape.addColorStop(0, 'rgba(0,0,0,0)');
-  rightNape.addColorStop(1, rgba(hair.base, 0.85));
+  rightNape.addColorStop(1, rgba(hair.base, 0.92));
   ctx.fillStyle = rightNape;
-  ctx.fillRect(w * 0.70, h * 0.16, w * 0.30, h * 0.42);
+  ctx.fillRect(w * 0.68, h * 0.14, w * 0.32, h * 0.46);
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
