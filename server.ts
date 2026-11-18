@@ -10,6 +10,7 @@ const require = createRequire(import.meta.url);
 const familyVaultHandler = require('./api/family-vault.js');
 const bichitoGuidanceHandler = require('./api/bichito-guidance.js');
 const analyzeClothingHandler = require('./api/analyze-clothing.js');
+const virtualTryonHandler = require('./api/virtual-tryon.js');
 
 async function startServer() {
   const app = express();
@@ -30,6 +31,10 @@ async function startServer() {
 
   app.all('/api/analyze-clothing', (req, res) => {
     return analyzeClothingHandler(req, res);
+  });
+
+  app.all('/api/virtual-tryon', (req, res) => {
+    return virtualTryonHandler(req, res);
   });
 
   // Serve static files from public and dist

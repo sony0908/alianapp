@@ -13,8 +13,60 @@ let analyzedSubType: string | null = null;
 let viewMode: 'photoStudio' | '3d' = 'photoStudio';
 let studioPose: 'standing' | 'sitting' = 'standing';
 
+// Imágenes fotorrealistas pregeneradas con las prendas reales de las fotos de tu hijo
+const DEFAULT_REAL_ITEMS: ClothingItem[] = [
+  {
+    id: 'real-hoodie-navy',
+    category: 'tops',
+    name: 'Polerón Azul Doggie Skate',
+    color: '#263654',
+    subType: 'sweater',
+    tryOnUrl: '/tryon-hoodie-navy.jpg',
+  },
+  {
+    id: 'real-tee-sky',
+    category: 'tops',
+    name: 'Polera Celeste Paseo',
+    color: '#6ca0dc',
+    subType: 'tshirt',
+    tryOnUrl: '/tryon-tee-sky.jpg',
+  },
+  {
+    id: 'real-joggers-grey',
+    category: 'bottoms',
+    name: 'Buzo Gris Melange',
+    color: '#b8bdc4',
+    subType: 'pants',
+    tryOnUrl: '/tryon-joggers-grey.jpg',
+  },
+  {
+    id: 'real-romper-cream',
+    category: 'bottoms',
+    name: 'Jardinera Crema Jirafas',
+    color: '#ece0cc',
+    subType: 'shorts',
+    tryOnUrl: '/tryon-romper-cream.jpg',
+  },
+  {
+    id: 'real-socks-grey',
+    category: 'shoes',
+    name: 'Calcetines Grises Tejidos',
+    color: '#9aa0a6',
+    subType: 'shoes',
+    tryOnUrl: '/tryon-socks-grey.jpg',
+  },
+  {
+    id: 'real-bib-dino',
+    category: 'accessories',
+    name: 'Babero Bandana Dinosaurios',
+    color: '#5a738e',
+    subType: 'bib',
+    tryOnUrl: '/tryon-bib-dino.jpg',
+  },
+];
+
 // Redimensiona imágenes en el cliente para ahorrar memoria y evitar límites de localStorage
-function compressImageBase64(file: File, maxSize = 512): Promise<string> {
+function compressImageBase64(file: File, maxSize = 640): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -38,234 +90,145 @@ function compressImageBase64(file: File, maxSize = 512): Promise<string> {
   });
 }
 
-// Renderiza una prenda realista a medida sobre el retrato de estudio de tu hijo
-function renderStudioGarmentSVG(
+// Carga una imagen como HTMLImageElement
+const imageCache = new Map<string, HTMLImageElement>();
+function loadImg(url: string): Promise<HTMLImageElement> {
+  if (imageCache.has(url)) return Promise.resolve(imageCache.get(url)!);
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      imageCache.set(url, img);
+      resolve(img);
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+/**
+ * Compone fotorrealísticamente la imagen de estudio de tu hijo combinando las fotografías generadas
+ * de cada prenda real por zonas anatómicas con transición suave (feathered alpha mask),
+ * de modo que NUNCA se vea un dibujo plano encima, sino la ropa real con sus pliegues y sombras.
+ */
+async function renderPhotorealisticStudioCanvas(
+  canvas: HTMLCanvasElement,
   topItem: ClothingItem | undefined,
   botItem: ClothingItem | undefined,
   shoeItem: ClothingItem | undefined,
   accItem: ClothingItem | undefined,
-  showPacifier: boolean,
   pose: 'standing' | 'sitting'
-): string {
-  const defs: string[] = [];
-  const layers: string[] = [];
+) {
+  const W = 896;
+  const H = 1200;
+  if (canvas.width !== W || canvas.height !== H) {
+    canvas.width = W;
+    canvas.height = H;
+  }
+  const ctx = canvas.getContext('2d')!;
 
-  // Coordenadas calibradas sobre bichito-studio-standing.jpg (896x1200) y sitting (896x1200)
-  const isSitting = pose === 'sitting';
+  const baseSrc =
+    pose === 'standing'
+      ? '/bichito-studio-standing.jpg'
+      : '/bichito-studio-sitting.jpg';
 
-  if (botItem) {
-    const c = botItem.color || '#5e9dcc';
-    const patId = `pat-bot-${botItem.id}`;
-    if (botItem.photoUrl) {
-      defs.push(`
-        <pattern id="${patId}" patternUnits="userSpaceOnUse" width="420" height="420" x="238" y="610">
-          <image href="${botItem.photoUrl}" x="0" y="0" width="420" height="420" preserveAspectRatio="xMidYMid slice" />
-        </pattern>
-      `);
+  try {
+    const baseImg = await loadImg(baseSrc);
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(baseImg, 0, 0, W, H);
+  } catch {
+    return;
+  }
+
+  // En pose sentado mostramos el retrato limpio sentado
+  if (pose === 'sitting') return;
+
+  // Función auxiliar para fundir una región horizontal (yStart..yEnd) con borde difuminado suave (feather)
+  const blendLayerRegion = async (
+    imgUrl: string,
+    yStart: number,
+    yEnd: number,
+    featherTop = 28,
+    featherBottom = 28
+  ) => {
+    try {
+      const layerImg = await loadImg(imgUrl);
+      const off = document.createElement('canvas');
+      off.width = W;
+      off.height = H;
+      const oCtx = off.getContext('2d')!;
+      oCtx.drawImage(layerImg, 0, 0, W, H);
+
+      oCtx.globalCompositeOperation = 'destination-in';
+      const grad = oCtx.createLinearGradient(0, yStart - featherTop, 0, yEnd + featherBottom);
+      const totalSpan = yEnd + featherBottom - (yStart - featherTop);
+      const stop1 = Math.max(0.01, Math.min(0.45, featherTop / totalSpan));
+      const stop2 = Math.max(0.55, Math.min(0.99, 1 - featherBottom / totalSpan));
+
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      grad.addColorStop(stop1, 'rgba(0,0,0,1)');
+      grad.addColorStop(stop2, 'rgba(0,0,0,1)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+      oCtx.fillStyle = grad;
+      oCtx.fillRect(0, Math.max(0, yStart - featherTop), W, totalSpan);
+
+      ctx.drawImage(off, 0, 0);
+    } catch (e) {
+      console.warn('Error cargando imagen de prenda real:', imgUrl, e);
     }
-    const fill = botItem.photoUrl ? `url(#${patId})` : c;
-    const isShorts = botItem.subType === 'shorts';
+  };
 
-    if (!isSitting) {
-      // Pose de pie: cintura (y=635) hasta rodillas (shorts y=825) o tobillos (pants y=1030)
-      const legBottomY = isShorts ? 835 : 1032;
-      layers.push(`
-        <g filter="url(#garment-shadow)">
-          <path d="
-            M 332 636
-            Q 448 656 566 636
-            L 592 738
-            L ${isShorts ? 596 : 586} ${legBottomY}
-            Q 540 ${legBottomY + 18} 492 ${legBottomY}
-            L 462 795
-            Q 448 782 434 795
-            L 404 ${legBottomY}
-            Q 356 ${legBottomY + 18} 310 ${legBottomY}
-            L 304 738
-            Z
-          " fill="${fill}" stroke="rgba(0,0,0,0.14)" stroke-width="3" />
-          <!-- Pretina elástica realista -->
-          <path d="M 330 634 Q 448 654 568 634 L 572 664 Q 448 682 326 664 Z" fill="${c}" filter="brightness(0.92)" opacity="0.92" />
-          <!-- Costura central y pliegues suaves -->
-          <path d="M 448 664 L 448 776" stroke="rgba(0,0,0,0.16)" stroke-width="2.5" fill="none" />
-        </g>
-      `);
+  // Caso especial: Jardinera crema (es un conjunto entero que ya trae la polera celeste debajo)
+  if (botItem?.id === 'real-romper-cream' && botItem.tryOnUrl) {
+    await blendLayerRegion(botItem.tryOnUrl, 315, 920, 26, 30);
+  } else {
+    // 1. Bottom (Buzo / Pantalón): desde la cintura (y=612) hasta los tobillos (y=1030)
+    if (botItem?.tryOnUrl) {
+      await blendLayerRegion(botItem.tryOnUrl, 615, 1028, 28, 22);
+    }
+
+    // 2. Top (Polerón / Polera): desde el cuello/hombros (y=310) hasta la cintura (y=685)
+    // Se dibuja después del pantalón para que la caída del polerón o polera cubra naturalmente la pretina del pantalón
+    if (topItem?.tryOnUrl) {
+      const bottomEdge = botItem?.tryOnUrl ? 672 : 715;
+      await blendLayerRegion(topItem.tryOnUrl, 305, bottomEdge, 24, 26);
+    }
+  }
+
+  // 3. Calzado / Calcetines: desde el tobillo (y=985) hasta la punta de los pies (y=1185)
+  if (shoeItem?.tryOnUrl) {
+    await blendLayerRegion(shoeItem.tryOnUrl, 988, 1185, 22, 10);
+  }
+
+  // 4. Accesorios (Babero bandana o gorrito): si es babero, va sobre el cuello y pecho alto (y=315..520)
+  if (accItem?.tryOnUrl) {
+    if (accItem.subType === 'bib' && !topItem) {
+      await blendLayerRegion(accItem.tryOnUrl, 318, 535, 22, 28);
+    } else if (accItem.subType === 'bib' && topItem) {
+      // Recorte suave en V solo para el babero sobre la polera
+      try {
+        const bibImg = await loadImg(accItem.tryOnUrl);
+        const off = document.createElement('canvas');
+        off.width = W;
+        off.height = H;
+        const oCtx = off.getContext('2d')!;
+        oCtx.save();
+        oCtx.beginPath();
+        oCtx.moveTo(335, 318);
+        oCtx.quadraticCurveTo(448, 348, 561, 318);
+        oCtx.quadraticCurveTo(585, 455, 448, 520);
+        oCtx.quadraticCurveTo(311, 455, 335, 318);
+        oCtx.closePath();
+        oCtx.clip();
+        oCtx.drawImage(bibImg, 0, 0, W, H);
+        oCtx.restore();
+        ctx.drawImage(off, 0, 0);
+      } catch {}
     } else {
-      // Pose sentado: cubre pañal y muslos abiertos
-      const legY = isShorts ? 825 : 940;
-      layers.push(`
-        <g filter="url(#garment-shadow)">
-          <path d="
-            M 308 618
-            Q 448 648 590 618
-            Q 680 680 695 ${legY}
-            Q 625 ${legY + 32} 555 ${legY - 10}
-            L 485 775
-            Q 448 790 410 775
-            L 340 ${legY - 10}
-            Q 270 ${legY + 32} 200 ${legY}
-            Q 215 680 308 618
-            Z
-          " fill="${fill}" stroke="rgba(0,0,0,0.14)" stroke-width="3" />
-        </g>
-      `);
+      await blendLayerRegion(accItem.tryOnUrl, 30, 260, 15, 25);
     }
   }
-
-  if (topItem) {
-    const c = topItem.color || '#df7446';
-    const patId = `pat-top-${topItem.id}`;
-    if (topItem.photoUrl) {
-      defs.push(`
-        <pattern id="${patId}" patternUnits="userSpaceOnUse" width="460" height="390" x="218" y="340">
-          <image href="${topItem.photoUrl}" x="0" y="0" width="460" height="390" preserveAspectRatio="xMidYMid slice" />
-        </pattern>
-      `);
-    }
-    const fill = topItem.photoUrl ? `url(#${patId})` : c;
-    const isLong = topItem.subType === 'sweater' || topItem.subType === 'jacket';
-    const isBodysuit = topItem.subType === 'bodysuit' && !botItem;
-
-    if (!isSitting) {
-      // Mangas cortas vs mangas largas siguiendo los bracitos reales
-      const leftArmOutX = isLong ? 198 : 238;
-      const leftArmOutY = isLong ? 625 : 510;
-      const leftArmInX = isLong ? 256 : 298;
-      const leftArmInY = isLong ? 642 : 538;
-
-      const rightArmOutX = isLong ? 698 : 658;
-      const rightArmOutY = isLong ? 625 : 510;
-      const rightArmInX = isLong ? 640 : 598;
-      const rightArmInY = isLong ? 642 : 538;
-
-      const bottomY = isBodysuit ? 765 : 658;
-
-      layers.push(`
-        <g filter="url(#garment-shadow)">
-          <path d="
-            M 366 364
-            Q 448 404 530 364
-            Q 596 376 626 422
-            L ${rightArmOutX} ${rightArmOutY}
-            Q ${(rightArmOutX + rightArmInX) / 2} ${rightArmOutY + 24} ${rightArmInX} ${rightArmInY}
-            L 578 482
-            L 574 ${bottomY}
-            Q 448 ${bottomY + (isBodysuit ? 45 : 22)} 322 ${bottomY}
-            L 318 482
-            L ${leftArmInX} ${leftArmInY}
-            Q ${(leftArmOutX + leftArmInX) / 2} ${leftArmOutY + 24} ${leftArmOutX} ${leftArmOutY}
-            L 270 422
-            Q 300 376 366 364
-            Z
-          " fill="${fill}" stroke="rgba(0,0,0,0.14)" stroke-width="3" />
-          <!-- Cuello redondo acanalado -->
-          <path d="M 362 364 Q 448 408 534 364 Q 448 424 362 364 Z" fill="${c}" filter="brightness(0.9)" stroke="rgba(0,0,0,0.15)" stroke-width="2" />
-        </g>
-      `);
-    } else {
-      const bottomY = 648;
-      layers.push(`
-        <g filter="url(#garment-shadow)">
-          <path d="
-            M 352 372
-            Q 448 416 544 372
-            Q 618 390 648 448
-            L 682 548
-            Q 642 568 606 552
-            L 585 488
-            L 588 ${bottomY}
-            Q 448 ${bottomY + 28} 308 ${bottomY}
-            L 311 488
-            L 290 552
-            Q 254 568 214 548
-            L 248 448
-            Q 278 390 352 372
-            Z
-          " fill="${fill}" stroke="rgba(0,0,0,0.14)" stroke-width="3" />
-        </g>
-      `);
-    }
-  }
-
-  if (shoeItem) {
-    const c = shoeItem.color || '#e0d6cc';
-    if (!isSitting) {
-      layers.push(`
-        <g filter="url(#garment-shadow)">
-          <!-- Zapatito izquierdo -->
-          <ellipse cx="348" cy="1098" rx="68" ry="44" transform="rotate(-12 348 1098)" fill="${c}" stroke="rgba(0,0,0,0.18)" stroke-width="3" />
-          <ellipse cx="344" cy="1114" rx="68" ry="22" transform="rotate(-12 344 1114)" fill="#fffdfb" opacity="0.92" />
-          <!-- Zapatito derecho -->
-          <ellipse cx="568" cy="1098" rx="68" ry="44" transform="rotate(12 568 1098)" fill="${c}" stroke="rgba(0,0,0,0.18)" stroke-width="3" />
-          <ellipse cx="572" cy="1114" rx="68" ry="22" transform="rotate(12 572 1114)" fill="#fffdfb" opacity="0.92" />
-        </g>
-      `);
-    } else {
-      layers.push(`
-        <g filter="url(#garment-shadow)">
-          <ellipse cx="355" cy="995" rx="82" ry="52" transform="rotate(-8 355 995)" fill="${c}" stroke="rgba(0,0,0,0.18)" stroke-width="3" />
-          <ellipse cx="575" cy="995" rx="82" ry="52" transform="rotate(8 575 995)" fill="${c}" stroke="rgba(0,0,0,0.18)" stroke-width="3" />
-        </g>
-      `);
-    }
-  }
-
-  if (accItem) {
-    const c = accItem.color || '#5e9dcc';
-    if (accItem.subType === 'bib') {
-      // Babero bandana como el que usa en las fotos reales
-      layers.push(`
-        <g filter="url(#garment-shadow)">
-          <path d="
-            M 348 356
-            Q 448 396 548 356
-            Q 572 445 454 512
-            Q 448 516 442 512
-            Q 324 445 348 356
-            Z
-          " fill="${c}" stroke="rgba(0,0,0,0.15)" stroke-width="3" />
-        </g>
-      `);
-    } else {
-      // Gorrito tejido suave sobre la cabecita
-      layers.push(`
-        <g filter="url(#garment-shadow)">
-          <path d="
-            M 304 205
-            Q 315 72 448 72
-            Q 581 72 592 205
-            Q 448 175 304 205
-            Z
-          " fill="${c}" stroke="rgba(0,0,0,0.15)" stroke-width="3" />
-          <path d="M 296 202 Q 448 168 600 202 L 596 232 Q 448 198 300 232 Z" fill="${c}" filter="brightness(0.92)" />
-          <circle cx="448" cy="64" r="26" fill="${c}" filter="brightness(0.95)" />
-        </g>
-      `);
-    }
-  }
-
-  if (showPacifier) {
-    const py = isSitting ? 336 : 318;
-    layers.push(`
-      <g filter="url(#garment-shadow)">
-        <rect x="412" y="${py - 18}" width="72" height="38" rx="19" fill="#5da9e9" stroke="#ffffff" stroke-width="2.5" />
-        <circle cx="448" cy="${py}" r="12" fill="#f0c888" />
-        <circle cx="448" cy="${py + 12}" r="14" fill="none" stroke="#ffffff" stroke-width="3.5" />
-      </g>
-    `);
-  }
-
-  return `
-    <svg viewBox="0 0 896 1200" class="studio-garment-svg" preserveAspectRatio="xMidYMid meet">
-      <defs>
-        <filter id="garment-shadow" x="-10%" y="-10%" width="120%" height="120%">
-          <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#2b1b10" flood-opacity="0.22" />
-        </filter>
-        ${defs.join('\n')}
-      </defs>
-      ${layers.join('\n')}
-    </svg>
-  `;
 }
 
 export function initWardrobe3D() {
@@ -273,6 +236,7 @@ export function initWardrobe3D() {
   if (!container) return;
 
   if (wardrobeApp) {
+    ensureRealTryOnItems();
     renderWardrobeUI();
     return;
   }
@@ -285,20 +249,18 @@ export function initWardrobe3D() {
           <span class="wardrobe-icon">👶</span>
           <div>
             <h2>Probador de Bichito</h2>
-            <small>Tu hijo real en estudio + giro 3D interactivo</small>
+            <small>Fotos reales de tu bebé con cada prenda puesta</small>
           </div>
         </div>
         <div class="wardrobe-top-actions">
           <button id="btn-mode-studio" class="btn-tool active" title="Ver a tu bebé real en estudio fotográfico">📸 Tu Bebé Real</button>
           <button id="btn-pose-toggle" class="btn-tool" title="Cambiar entre De pie y Sentado">🧍 De pie / Sentado</button>
           <button id="btn-mode-3d" class="btn-tool" title="Cambiar a muñeco 3D giratorio 360°">🔄 Vista 3D 360°</button>
-          <button id="btn-pacifier" class="btn-tool" title="Poner o quitar chupete">🍼 Chupete</button>
-          <button id="btn-baby-face" class="btn-tool" title="Personalizar rasgos o subir otra foto">⚙ Rasgos</button>
           <button id="btn-clear-outfit" class="btn-tool" title="Dejar solo con pañal">🧹 En pañal</button>
         </div>
       </header>
 
-      <!-- Zona Principal: Categorías + Visor Híbrido (Estudio Real + 3D) + Mis Combinaciones -->
+      <!-- Zona Principal: Categorías + Visor Fotorrealista + Mis Combinaciones -->
       <div class="wardrobe-main-layout">
         <!-- Selector Lateral de Categorías -->
         <aside class="wardrobe-categories">
@@ -311,11 +273,11 @@ export function initWardrobe3D() {
             <span class="cat-label">Bottoms</span>
           </button>
           <button class="cat-btn" data-cat="shoes">
-            <span class="cat-icon">👟</span>
+            <span class="cat-icon">🧦</span>
             <span class="cat-label">Calzado</span>
           </button>
           <button class="cat-btn" data-cat="accessories">
-            <span class="cat-icon">🧢</span>
+            <span class="cat-icon">🧣</span>
             <span class="cat-label">Accesorios</span>
           </button>
         </aside>
@@ -323,19 +285,16 @@ export function initWardrobe3D() {
         <!-- Visor Principal -->
         <main class="wardrobe-3d-stage" style="position: relative;">
           <!-- 1. Vista Estudio Fotorrealista de tu Hijo -->
-          <div id="photo-studio-stage" class="photo-studio-viewport" style="position:relative; width:100%; height:430px; display:flex; align-items:center; justify-content:center; background:#faeedf; overflow:hidden;">
-            <div style="position:relative; height:100%; aspect-ratio: 896 / 1200; max-width:100%; display:flex; align-items:center; justify-content:center;">
-              <img id="studio-base-img" src="/bichito-studio-standing.jpg" alt="Tu bebé en estudio" style="width:100%; height:100%; object-fit:contain; display:block; user-select:none;" />
-              <div id="studio-garment-overlay" style="position:absolute; inset:0; pointer-events:none;"></div>
-            </div>
+          <div id="photo-studio-stage" class="photo-studio-viewport" style="position:relative; width:100%; height:450px; display:flex; align-items:center; justify-content:center; background:#f8ecde; overflow:hidden;">
+            <canvas id="studio-composite-canvas" width="896" height="1200" style="max-width:100%; max-height:100%; width:auto; height:100%; object-fit:contain; display:block;"></canvas>
             <div class="rotate-hint" style="bottom: 12px;">
-              <span>✨ Retrato de estudio generado con las fotos reales de tu hijo</span>
+              <span>✨ Toca cualquier prenda abajo para vérsela puesta de verdad</span>
             </div>
           </div>
 
           <!-- 2. Visor 3D Interactivo 360° -->
-          <div id="three-stage-wrapper" class="hide" style="position:relative; width:100%; height:430px;">
-            <div id="three-stage" class="three-viewport" style="width:100%; height:430px;"></div>
+          <div id="three-stage-wrapper" class="hide" style="position:relative; width:100%; height:450px;">
+            <div id="three-stage" class="three-viewport" style="width:100%; height:450px;"></div>
             <div class="rotate-hint" id="rotate-hint">
               <span class="rotate-arrow">⤹ 360° ⤸</span>
               <span>Arrastra para girar el modelo 3D</span>
@@ -356,21 +315,21 @@ export function initWardrobe3D() {
       <!-- Carrusel Inferior de Prendas Reales -->
       <footer class="wardrobe-carousel-tray">
         <div class="carousel-header">
-          <span id="carousel-category-title" class="cat-current-name">Tops, Poleras & Bodys</span>
-          <button id="btn-upload-clothing" class="btn-upload-badge">📷 ➕ Subir Foto de Ropa</button>
+          <span id="carousel-category-title" class="cat-current-name">Tops, Poleras & Polerones</span>
+          <button id="btn-upload-clothing" class="btn-upload-badge">📷 ➕ Subir y Generar con IA</button>
         </div>
         <div id="clothing-carousel" class="clothing-carousel"></div>
       </footer>
     </div>
 
-    <!-- Modal para Subir y Analizar Ropa con Gemini AI -->
+    <!-- Modal para Subir y Generar Imagen Real de Ropa con Gemini AI -->
     <dialog id="modal-upload-clothing" class="wardrobe-modal">
       <div class="sheet">
         <div class="head">
-          <h2>Añadir Ropa al Armario</h2>
+          <h2>Probar Prenda Nueva con IA</h2>
           <button class="x" id="btn-close-upload-modal">×</button>
         </div>
-        <p class="note">Toma una foto de la prenda extendida. La IA detectará el nombre, color y tipo para vestir a tu bebé.</p>
+        <p class="note">Sube una foto de la prenda. Gemini AI analizará la ropa y <b>generará una foto real de tu hijo teniéndola puesta</b>.</p>
         
         <div class="upload-dropzone" id="dropzone">
           <input type="file" id="clothing-file-input" accept="image/*" class="hide" />
@@ -395,7 +354,7 @@ export function initWardrobe3D() {
           <label class="field">Categoría
             <select id="select-clothing-category">
               <option value="tops">Top (Polera, Body, Polerón, Chaqueta)</option>
-              <option value="bottoms">Bottom (Buzo, Pantalón, Shorts)</option>
+              <option value="bottoms">Bottom (Buzo, Pantalón, Jardinera, Shorts)</option>
               <option value="shoes">Calzado (Calcetines, Zapatitos)</option>
               <option value="accessories">Accesorio (Babero, Gorro)</option>
             </select>
@@ -408,64 +367,7 @@ export function initWardrobe3D() {
             </div>
           </label>
 
-          <button id="btn-confirm-add-clothing" class="primary" style="margin-top: 18px;">✨ Guardar y probar en mi bebé</button>
-        </div>
-      </div>
-    </dialog>
-
-    <!-- Modal para Personalizar Apariencia 3D del Bebé -->
-    <dialog id="modal-baby-face" class="wardrobe-modal">
-      <div class="sheet">
-        <div class="head">
-          <h2>Apariencia del Modelo 3D</h2>
-          <button class="x" id="btn-close-face-modal">×</button>
-        </div>
-        <p class="note">Ajusta los rasgos de la vista 3D o proyecta una foto real.</p>
-
-        <div class="appearance-section">
-          <span class="appearance-label">Modo de rostro en vista 3D</span>
-          <div class="chip-row">
-            <button type="button" class="chip-btn" data-face-mode="photo">📷 Rostro Real de Estudio (Recomendado)</button>
-            <button type="button" class="chip-btn" data-face-mode="sculpted3d">✨ 3D Esculpido</button>
-          </div>
-        </div>
-
-        <div id="sculpted-controls">
-          <div class="appearance-section">
-            <span class="appearance-label">Tono de piel</span>
-            <div class="chip-row">
-              ${(Object.keys(SKIN_PRESETS) as SkinPresetKey[]).map(
-                (k) => `<button type="button" class="chip-btn" data-skin="${k}"><i class="dot-swatch" style="background:${SKIN_PRESETS[k].base}"></i>${SKIN_PRESETS[k].label}</button>`
-              ).join('')}
-            </div>
-          </div>
-
-          <div class="appearance-section">
-            <span class="appearance-label">Color de ojos</span>
-            <div class="chip-row">
-              ${(Object.keys(EYE_PRESETS) as EyePresetKey[]).map(
-                (k) => `<button type="button" class="chip-btn" data-eye="${k}"><i class="dot-swatch" style="background:${EYE_PRESETS[k].mid}"></i>${EYE_PRESETS[k].label}</button>`
-              ).join('')}
-            </div>
-          </div>
-
-          <div class="appearance-section">
-            <span class="appearance-label">Cabello 3D</span>
-            <div class="chip-row">
-              ${(Object.keys(HAIR_PRESETS) as HairPresetKey[]).map(
-                (k) => `<button type="button" class="chip-btn" data-hair="${k}"><i class="dot-swatch" style="background:${HAIR_PRESETS[k].base}"></i>${HAIR_PRESETS[k].label}</button>`
-              ).join('')}
-            </div>
-          </div>
-        </div>
-
-        <div class="upload-dropzone" id="face-dropzone" style="margin-top: 14px;">
-          <input type="file" id="baby-face-input" accept="image/*" class="hide" />
-          <div class="upload-prompt">
-            <span class="upload-big-icon">👶</span>
-            <b>Subir otra foto frontal de tu bebé</b>
-            <small>Se aplicará al rostro 3D</small>
-          </div>
+          <button id="btn-confirm-add-clothing" class="primary" style="margin-top: 18px;">✨ Generar Foto en mi Bebé y Guardar</button>
         </div>
       </div>
     </dialog>
@@ -479,7 +381,7 @@ export function initWardrobe3D() {
         </div>
         <p class="note">Dale un nombre a este conjunto para volver a probárselo al bebé cuando quieras.</p>
         <label class="field">Nombre del conjunto
-          <input type="text" id="input-look-name" maxlength="40" placeholder="Ej. Ropa de paseo, Pijama de noche" />
+          <input type="text" id="input-look-name" maxlength="40" placeholder="Ej. Paseo con polerón Doggie Skate" />
         </label>
         <button id="btn-confirm-save-look" class="primary" style="margin-top: 18px;">💾 Guardar Combinación</button>
       </div>
@@ -487,58 +389,43 @@ export function initWardrobe3D() {
   `;
 
   wardrobeApp = new BabyStyle3D('three-stage');
-
-  // Si aún no tiene prendas cargadas, agregamos las prendas reales que se ven en las fotos que enviaste para que puedas probarlas de inmediato
-  if (wardrobeApp.state.items.length === 0) {
-    wardrobeApp.state.items = [
-      {
-        id: 'real-hoodie-navy',
-        category: 'tops',
-        name: 'Polerón Azul Doggie Skate',
-        color: '#263654',
-        subType: 'sweater',
-      },
-      {
-        id: 'real-tee-sky',
-        category: 'tops',
-        name: 'Polera Celeste Paseo',
-        color: '#4e8bc4',
-        subType: 'tshirt',
-      },
-      {
-        id: 'real-joggers-grey',
-        category: 'bottoms',
-        name: 'Buzo Gris Melange',
-        color: '#b8bdc4',
-        subType: 'pants',
-      },
-      {
-        id: 'real-romper-cream',
-        category: 'bottoms',
-        name: 'Jardinera Crema Animalitos',
-        color: '#ece0cc',
-        subType: 'shorts',
-      },
-      {
-        id: 'real-socks-grey',
-        category: 'shoes',
-        name: 'Calcetines Grises Suaves',
-        color: '#9aa0a6',
-        subType: 'shoes',
-      },
-      {
-        id: 'real-bib-dino',
-        category: 'accessories',
-        name: 'Babero Bandana Azul',
-        color: '#46639e',
-        subType: 'bib',
-      },
-    ];
-    wardrobeApp.saveState();
-  }
+  ensureRealTryOnItems();
 
   setupEventListeners();
   renderWardrobeUI();
+}
+
+// Asegura que todas las prendas reales tengan su imagen fotorrealista asociada (incluso si el navegador tenía datos viejos en localStorage)
+function ensureRealTryOnItems() {
+  if (!wardrobeApp) return;
+  let updated = false;
+
+  DEFAULT_REAL_ITEMS.forEach((defItem) => {
+    const existing = wardrobeApp!.state.items.find((i) => i.id === defItem.id);
+    if (!existing) {
+      wardrobeApp!.state.items.push({ ...defItem });
+      updated = true;
+    } else if (existing.tryOnUrl !== defItem.tryOnUrl) {
+      existing.tryOnUrl = defItem.tryOnUrl;
+      existing.name = defItem.name;
+      updated = true;
+    }
+  });
+
+  // Si no hay ningún look puesto al iniciar por primera vez, le ponemos el Polerón Doggie Skate + Buzo Gris para que se vea vestido de verdad enseguida
+  const { topId, bottomId, shoesId, accessoryId } = wardrobeApp.state.currentOutfit;
+  if (!topId && !bottomId && !shoesId && !accessoryId && !localStorage.getItem('bichito-tryon-init-v2')) {
+    wardrobeApp.state.currentOutfit.topId = 'real-hoodie-navy';
+    wardrobeApp.state.currentOutfit.bottomId = 'real-joggers-grey';
+    wardrobeApp.state.currentOutfit.shoesId = 'real-socks-grey';
+    localStorage.setItem('bichito-tryon-init-v2', '1');
+    updated = true;
+  }
+
+  if (updated) {
+    wardrobeApp.updateOutfitMeshes();
+    wardrobeApp.saveState();
+  }
 }
 
 function setupEventListeners() {
@@ -575,15 +462,8 @@ function setupEventListeners() {
 
   btnPoseToggle?.addEventListener('click', () => {
     studioPose = studioPose === 'standing' ? 'sitting' : 'standing';
-    const baseImg = document.getElementById('studio-base-img') as HTMLImageElement;
-    if (baseImg) {
-      baseImg.src =
-        studioPose === 'standing'
-          ? '/bichito-studio-standing.jpg'
-          : '/bichito-studio-sitting.jpg';
-    }
     renderWardrobeUI();
-    showWardrobeToast(studioPose === 'standing' ? 'Pose: De pie' : 'Pose: Sentado');
+    showWardrobeToast(studioPose === 'standing' ? 'Pose: De pie (con probador de ropa)' : 'Pose: Sentado en estudio');
   });
 
   // Selector de categorías
@@ -597,95 +477,11 @@ function setupEventListeners() {
     });
   });
 
-  // Botón Apariencia del Bebé 3D & Chupete
-  const faceModal = document.getElementById('modal-baby-face') as HTMLDialogElement;
-  const faceInput = document.getElementById('baby-face-input') as HTMLInputElement;
-  const pacifierBtn = document.getElementById('btn-pacifier');
-  if (pacifierBtn && wardrobeApp) {
-    pacifierBtn.classList.toggle('active', wardrobeApp.state.showPacifier);
-  }
-
-  pacifierBtn?.addEventListener('click', () => {
-    if (!wardrobeApp) return;
-    const next = !wardrobeApp.state.showPacifier;
-    wardrobeApp.setSculptedAppearance({ showPacifier: next });
-    pacifierBtn.classList.toggle('active', next);
-    renderWardrobeUI();
-    showWardrobeToast(next ? 'Chupete puesto' : 'Chupete quitado');
-  });
-
-  document.getElementById('btn-baby-face')?.addEventListener('click', () => {
-    updateFacePresetSelection();
-    faceModal?.showModal();
-  });
-
-  document.getElementById('btn-close-face-modal')?.addEventListener('click', () => {
-    faceModal?.close();
-  });
-
-  document.querySelectorAll('[data-face-mode]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const mode = (btn as HTMLElement).dataset.faceMode as 'sculpted3d' | 'photo';
-      if (wardrobeApp && mode) {
-        wardrobeApp.setSculptedAppearance({ faceMode: mode });
-        updateFacePresetSelection();
-      }
-    });
-  });
-
-  document.querySelectorAll('[data-skin]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const skinPreset = (btn as HTMLElement).dataset.skin as SkinPresetKey;
-      if (wardrobeApp && skinPreset) {
-        wardrobeApp.setSculptedAppearance({ skinPreset });
-        updateFacePresetSelection();
-      }
-    });
-  });
-
-  document.querySelectorAll('[data-eye]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const eyePreset = (btn as HTMLElement).dataset.eye as EyePresetKey;
-      if (wardrobeApp && eyePreset) {
-        wardrobeApp.setSculptedAppearance({ eyePreset });
-        updateFacePresetSelection();
-      }
-    });
-  });
-
-  document.querySelectorAll('[data-hair]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const hairPreset = (btn as HTMLElement).dataset.hair as HairPresetKey;
-      if (wardrobeApp && hairPreset) {
-        wardrobeApp.setSculptedAppearance({ hairPreset });
-        updateFacePresetSelection();
-      }
-    });
-  });
-
-  document.getElementById('face-dropzone')?.addEventListener('click', () => {
-    faceInput?.click();
-  });
-
-  faceInput?.addEventListener('change', async (e) => {
-    const file = (e.target as HTMLInputElement).files?.[0];
-    if (!file || !wardrobeApp) return;
-    try {
-      const compressed = await compressImageBase64(file, 512);
-      wardrobeApp.loadBabyFacePhoto(compressed);
-      updateFacePresetSelection();
-      faceModal?.close();
-      showWardrobeToast('Nueva foto del rostro aplicada al bebé 3D');
-    } catch (err) {
-      console.warn('Error cargando foto del bebé:', err);
-    }
-  });
-
   // Botón Limpiar/Desvestir
   document.getElementById('btn-clear-outfit')?.addEventListener('click', () => {
     wardrobeApp?.clearOutfit();
     renderWardrobeUI();
-    showWardrobeToast('Bebé en pañal');
+    showWardrobeToast('Bebé solo con pañal');
   });
 
   // Guardar Look
@@ -720,15 +516,17 @@ function setupEventListeners() {
     showWardrobeToast('¡Look guardado en Mis Combinaciones!');
   });
 
-  // Modal Subir Ropa
+  // Modal Subir Ropa y Generar Imagen Real con Gemini AI
   const modal = document.getElementById('modal-upload-clothing') as HTMLDialogElement;
   const fileInput = document.getElementById('clothing-file-input') as HTMLInputElement;
   const dropzone = document.getElementById('dropzone');
   const previewImg = document.getElementById('upload-preview-img') as HTMLImageElement;
   const uploadPrompt = document.getElementById('upload-prompt');
   const aiStatus = document.getElementById('ai-loading-status');
+  const aiStatusText = document.getElementById('ai-status-text');
   const colorInput = document.getElementById('input-clothing-color') as HTMLInputElement;
   const colorLabel = document.getElementById('color-hex-label');
+  const confirmBtn = document.getElementById('btn-confirm-add-clothing') as HTMLButtonElement;
 
   const resetUploadModal = () => {
     analyzedSubType = null;
@@ -742,6 +540,10 @@ function setupEventListeners() {
     if (nameInput) nameInput.value = '';
     const catSelect = document.getElementById('select-clothing-category') as HTMLSelectElement;
     if (catSelect && wardrobeApp) catSelect.value = wardrobeApp.state.activeCategory;
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = '✨ Generar Foto en mi Bebé y Guardar';
+    }
   };
 
   document.getElementById('btn-upload-clothing')?.addEventListener('click', () => {
@@ -766,19 +568,22 @@ function setupEventListeners() {
     if (!file) return;
 
     try {
-      const base64 = await compressImageBase64(file, 512);
+      const base64 = await compressImageBase64(file, 640);
       if (previewImg && uploadPrompt) {
         previewImg.src = base64;
         previewImg.classList.remove('hide');
         uploadPrompt.classList.add('hide');
       }
 
-      if (aiStatus) aiStatus.classList.remove('hide');
+      if (aiStatus && aiStatusText) {
+        aiStatusText.textContent = 'Analizando prenda con Gemini AI...';
+        aiStatus.classList.remove('hide');
+      }
       try {
         const res = await fetch('/api/analyze-clothing', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: base64 })
+          body: JSON.stringify({ image: base64 }),
         });
         const data = await res.json();
 
@@ -802,8 +607,8 @@ function setupEventListeners() {
     }
   });
 
-  // Confirmar añadir prenda
-  document.getElementById('btn-confirm-add-clothing')?.addEventListener('click', () => {
+  // Confirmar añadir prenda y generar imagen fotorrealista con /api/virtual-tryon
+  confirmBtn?.addEventListener('click', async () => {
     if (!wardrobeApp) return;
     const nameInput = document.getElementById('input-clothing-name') as HTMLInputElement;
     const catSelect = document.getElementById('select-clothing-category') as HTMLSelectElement;
@@ -818,60 +623,84 @@ function setupEventListeners() {
     }
 
     const defaultSubType =
-      category === 'tops' ? 'tshirt' :
-      category === 'bottoms' ? 'pants' :
-      category === 'shoes' ? 'shoes' : 'bib';
+      category === 'tops'
+        ? 'tshirt'
+        : category === 'bottoms'
+          ? 'pants'
+          : category === 'shoes'
+            ? 'shoes'
+            : 'bib';
+
+    let generatedTryOnUrl: string | undefined;
+
+    if (aiStatus && aiStatusText) {
+      aiStatusText.textContent = 'Generando foto real de tu bebé con esta prenda puesta (10-15 s)...';
+      aiStatus.classList.remove('hide');
+    }
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = '⏳ Vistiendo a tu bebé con IA...';
+
+    try {
+      const tryRes = await fetch('/api/virtual-tryon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          garmentImage: photoUrl.startsWith('data:') ? photoUrl : undefined,
+          garmentDescription: `${name} (color ${color}, ${analyzedSubType || defaultSubType})`,
+          category,
+        }),
+      });
+      if (tryRes.ok) {
+        const tryData = await tryRes.json();
+        if (tryData.tryOnImage) {
+          generatedTryOnUrl = tryData.tryOnImage;
+        }
+      }
+    } catch (err) {
+      console.warn('No se pudo generar try-on remoto:', err);
+    } finally {
+      if (aiStatus) aiStatus.classList.add('hide');
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = '✨ Generar Foto en mi Bebé y Guardar';
+    }
 
     wardrobeApp.addCustomClothing({
       name,
       category,
       color,
       subType: analyzedSubType || defaultSubType,
-      photoUrl: photoUrl.startsWith('data:') ? photoUrl : undefined
+      photoUrl: photoUrl.startsWith('data:') ? photoUrl : undefined,
+      tryOnUrl: generatedTryOnUrl,
     });
 
     modal?.close();
     renderWardrobeUI();
-    showWardrobeToast(`¡"${name}" guardada y puesta en tu bebé!`);
-  });
-}
-
-function updateFacePresetSelection() {
-  if (!wardrobeApp) return;
-  const { faceMode, skinPreset, eyePreset, hairPreset } = wardrobeApp.state;
-
-  document.querySelectorAll('[data-face-mode]').forEach((btn) => {
-    btn.classList.toggle('active', (btn as HTMLElement).dataset.faceMode === faceMode);
-  });
-  document.querySelectorAll('[data-skin]').forEach((btn) => {
-    btn.classList.toggle('active', (btn as HTMLElement).dataset.skin === skinPreset);
-  });
-  document.querySelectorAll('[data-eye]').forEach((btn) => {
-    btn.classList.toggle('active', (btn as HTMLElement).dataset.eye === eyePreset);
-  });
-  document.querySelectorAll('[data-hair]').forEach((btn) => {
-    btn.classList.toggle('active', (btn as HTMLElement).dataset.hair === hairPreset);
+    showWardrobeToast(
+      generatedTryOnUrl
+        ? `¡Foto de tu bebé con "${name}" generada!`
+        : `¡"${name}" guardada en tu armario!`
+    );
   });
 }
 
 function renderWardrobeUI() {
   if (!wardrobeApp) return;
 
-  const { items, currentOutfit, savedOutfits, activeCategory, showPacifier } = wardrobeApp.state;
+  const { items, currentOutfit, savedOutfits, activeCategory } = wardrobeApp.state;
 
-  // Actualizar las prendas sobre el retrato de estudio real del bebé
-  const studioOverlay = document.getElementById('studio-garment-overlay');
-  if (studioOverlay) {
+  // Renderizar la composición fotorrealista en el canvas de estudio
+  const studioCanvas = document.getElementById('studio-composite-canvas') as HTMLCanvasElement | null;
+  if (studioCanvas) {
     const topItem = items.find((i) => i.id === currentOutfit.topId);
     const botItem = items.find((i) => i.id === currentOutfit.bottomId);
     const shoeItem = items.find((i) => i.id === currentOutfit.shoesId);
     const accItem = items.find((i) => i.id === currentOutfit.accessoryId);
-    studioOverlay.innerHTML = renderStudioGarmentSVG(
+    renderPhotorealisticStudioCanvas(
+      studioCanvas,
       topItem,
       botItem,
       shoeItem,
       accItem,
-      showPacifier,
       studioPose
     );
   }
@@ -887,21 +716,21 @@ function renderWardrobeUI() {
     const titles: Record<ClothingCategory, string> = {
       tops: '👕 Tops, Poleras & Polerones',
       bottoms: '👖 Pantalones, Buzos & Jardineras',
-      shoes: '👟 Calcetines & Zapatitos',
-      accessories: '🧢 Baberos & Gorritos'
+      shoes: '🧦 Calcetines & Zapatitos',
+      accessories: '🧣 Baberos & Gorritos',
     };
     catTitleEl.textContent = titles[activeCategory];
   }
 
-  // 2. Carrusel de Prendas Reales
+  // 2. Carrusel de Prendas Reales con miniatura de cómo le queda puesta
   const carousel = document.getElementById('clothing-carousel');
   if (carousel) {
-    const filteredItems = items.filter(i => i.category === activeCategory);
+    const filteredItems = items.filter((i) => i.category === activeCategory);
 
     let html = `
       <button id="btn-add-quick" class="clothing-card add-card">
         <span class="card-add-icon">➕</span>
-        <span class="card-name">Subir Foto</span>
+        <span class="card-name">Nueva Prenda IA</span>
       </button>
     `;
 
@@ -909,7 +738,7 @@ function renderWardrobeUI() {
       html += `
         <div class="empty-category-hint">
           <b>Aún no has subido prendas aquí</b>
-          <small>Toca "Subir Foto" para fotografiar ropa real de tu bebé y clasificarla con IA.</small>
+          <small>Toca "Nueva Prenda IA" para fotografiar ropa de tu bebé y vérsela puesta.</small>
         </div>
       `;
     } else {
@@ -920,14 +749,20 @@ function renderWardrobeUI() {
           (item.category === 'shoes' && currentOutfit.shoesId === item.id) ||
           (item.category === 'accessories' && currentOutfit.accessoryId === item.id);
 
+        const thumbSrc = item.tryOnUrl || item.photoUrl;
+
         html += `
           <article class="clothing-card ${isSelected ? 'selected' : ''}" data-item-id="${item.id}">
             <button class="btn-del-item" data-del-item="${item.id}" title="Eliminar prenda">×</button>
             <div class="card-swatch" style="background: ${item.color};">
-              ${item.photoUrl ? `<img src="${item.photoUrl}" class="swatch-photo" alt="" />` : `<span class="swatch-badge">${getCategoryEmoji(item.category)}</span>`}
+              ${
+                thumbSrc
+                  ? `<img src="${thumbSrc}" class="swatch-photo" alt="${escapeHtml(item.name)}" />`
+                  : `<span class="swatch-badge">${getCategoryEmoji(item.category)}</span>`
+              }
             </div>
             <span class="card-name">${escapeHtml(item.name)}</span>
-            <span class="card-status">${isSelected ? '✓ Puesto' : 'Probar'}</span>
+            <span class="card-status">${isSelected ? '✓ Puesto' : 'Ponerle'}</span>
           </article>
         `;
       });
@@ -939,9 +774,12 @@ function renderWardrobeUI() {
       card.addEventListener('click', (e) => {
         if ((e.target as HTMLElement).classList.contains('btn-del-item')) return;
         const itemId = (card as HTMLElement).dataset.itemId;
-        const item = items.find(i => i.id === itemId);
+        const item = items.find((i) => i.id === itemId);
         if (item && wardrobeApp) {
           wardrobeApp.selectClothing(item);
+          if (studioPose !== 'standing') {
+            studioPose = 'standing';
+          }
           renderWardrobeUI();
         }
       });
@@ -971,21 +809,22 @@ function renderWardrobeUI() {
       looksContainer.innerHTML = `
         <div class="empty-looks">
           <b>Sin combinaciones guardadas</b>
-          <small>Viste al bebé con tus prendas y toca "Guardar Look".</small>
+          <small>Combina un Top + Pantalón + Calcetines y toca "Guardar Look".</small>
         </div>
       `;
     } else {
-      looksContainer.innerHTML = savedOutfits.map((outfit) => {
-        const top = items.find(i => i.id === outfit.topId);
-        const bot = items.find(i => i.id === outfit.bottomId);
-        const sho = items.find(i => i.id === outfit.shoesId);
+      looksContainer.innerHTML = savedOutfits
+        .map((outfit) => {
+          const top = items.find((i) => i.id === outfit.topId);
+          const bot = items.find((i) => i.id === outfit.bottomId);
+          const sho = items.find((i) => i.id === outfit.shoesId);
 
-        return `
+          return `
           <div class="look-card" data-outfit-id="${outfit.id}">
             <div class="look-swatches">
               <span class="mini-swatch" style="background:${top?.color || '#eee'};" title="${top?.name || 'Top'}">👕</span>
               <span class="mini-swatch" style="background:${bot?.color || '#eee'};" title="${bot?.name || 'Pantalón'}">👖</span>
-              <span class="mini-swatch" style="background:${sho?.color || '#eee'};" title="${sho?.name || 'Calzado'}">👟</span>
+              <span class="mini-swatch" style="background:${sho?.color || '#eee'};" title="${sho?.name || 'Calzado'}">🧦</span>
             </div>
             <div class="look-info">
               <b>${escapeHtml(outfit.name)}</b>
@@ -994,7 +833,8 @@ function renderWardrobeUI() {
             <button class="btn-wear-look">Poner</button>
           </div>
         `;
-      }).join('');
+        })
+        .join('');
 
       looksContainer.querySelectorAll('[data-outfit-id]').forEach((card) => {
         card.addEventListener('click', () => {
@@ -1012,15 +852,22 @@ function renderWardrobeUI() {
 
 function getCategoryEmoji(cat: ClothingCategory): string {
   switch (cat) {
-    case 'tops': return '👕';
-    case 'bottoms': return '👖';
-    case 'shoes': return '👟';
-    case 'accessories': return '🧢';
+    case 'tops':
+      return '👕';
+    case 'bottoms':
+      return '👖';
+    case 'shoes':
+      return '🧦';
+    case 'accessories':
+      return '🧣';
   }
 }
 
 function escapeHtml(str: string): string {
-  return str.replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[m] || m);
+  return str.replace(
+    /[&<>"']/g,
+    (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[m] || m
+  );
 }
 
 function showWardrobeToast(msg: string) {

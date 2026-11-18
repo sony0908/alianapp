@@ -31,6 +31,7 @@ export interface ClothingItem {
   secondaryColor?: string;
   subType: string;
   photoUrl?: string;
+  tryOnUrl?: string;
   isCustom?: boolean;
 }
 
@@ -41,6 +42,7 @@ export interface SavedOutfit {
   bottomId: string | null;
   shoesId: string | null;
   accessoryId: string | null;
+  tryOnUrl?: string;
   createdAt: string;
 }
 
