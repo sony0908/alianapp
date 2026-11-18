@@ -1,4 +1,4 @@
-const CACHE = 'bichito-v3';
+const CACHE = 'bichito-v4';
 const ASSETS = ['/', '/index.html', '/app.js', '/manifest.webmanifest', '/favicon.svg'];
 
 self.addEventListener('install', event => {

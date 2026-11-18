@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "start": "tsx server.ts",
-    "build": "esbuild src/wardrobe-ui.ts --bundle --format=esm --outfile=dist/wardrobe.js --minify && cp dist/wardrobe.js public/wardrobe.js && cp -r public/. dist/ && cp index.html dist/index.html",
+    "build": "esbuild src/wardrobe-ui.ts --bundle --format=esm --outfile=dist/wardrobe.js --minify && cp dist/wardrobe.js public/wardrobe.js && cp -r public/. dist/",
     "preview": "tsx server.ts",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"

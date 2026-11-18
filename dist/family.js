@@ -11,7 +11,15 @@
   const esc = (text = '') => { const node = document.createElement('i'); node.textContent = text; return node.innerHTML; };
   const dateLabel = (value) => value ? new Intl.DateTimeFormat('es-CL', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${value}T12:00:00`)) : 'Sin fecha';
   const babyProfile = () => { try { return JSON.parse(localStorage.getItem('bichito-v2') || '{}').profile || {}; } catch { return {}; } };
-  const ageMonths = () => { const birth = babyProfile().birthDate; if (!birth) return null; return Math.max(0, Math.floor((Date.now() - new Date(`${birth}T12:00:00`)) / 2629800000)); };
+  const ageMonths = () => {
+    const birthStr = babyProfile().birthDate;
+    if (!birthStr) return null;
+    const birth = new Date(`${birthStr}T00:00:00`);
+    const now = new Date();
+    let m = (now.getFullYear() - birth.getFullYear()) * 12 + (now.getMonth() - birth.getMonth());
+    if (now.getDate() < birth.getDate()) m -= 1;
+    return Math.max(0, m);
+  };
 
   const style = document.createElement('style');
   style.textContent = `
@@ -101,7 +109,7 @@
     if (kind === 'milestones') { const file = $('f_photo').files[0]; const photo = file ? await new Promise((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); }) : ''; data.milestones.push({ id: uid(), title: get('type'), date: get('date'), note: get('note'), photo }); }
     save(); dialog.close(); render();
   }
-  function showFamily() { $('today').classList.add('hide'); $('history').classList.add('hide'); family.classList.remove('hide'); document.querySelectorAll('[data-view]').forEach((button) => button.classList.remove('active')); navButton.classList.add('active'); render(); }
+  function showFamily() { $('today').classList.add('hide'); $('history').classList.add('hide'); $('wardrobe')?.classList.add('hide'); family.classList.remove('hide'); document.querySelectorAll('[data-view]').forEach((button) => button.classList.remove('active')); navButton.classList.add('active'); render(); }
   navButton.onclick = showFamily;
   document.querySelectorAll('[data-view]').forEach((button) => { const original = button.onclick; button.onclick = (event) => { family.classList.add('hide'); navButton.classList.remove('active'); original?.call(button, event); }; });
   render();

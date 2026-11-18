@@ -32,11 +32,11 @@ async function startServer() {
     return analyzeClothingHandler(req, res);
   });
 
-  // Serve static files from public
+  // Serve static files from public and dist
   app.use(express.static(path.resolve('.', 'public')));
+  app.use(express.static(path.resolve('.', 'dist')));
 
   if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.resolve('.', 'dist')));
     app.get('*', (_req, res) => {
       res.sendFile(path.resolve('.', 'dist', 'index.html'));
     });
@@ -45,6 +45,7 @@ async function startServer() {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
+      root: path.resolve('.', 'dist'),
     });
     app.use(vite.middlewares);
   }
