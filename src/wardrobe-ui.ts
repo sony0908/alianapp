@@ -60,28 +60,58 @@ const DEFAULT_REAL_ITEMS: ClothingItem[] = [
   },
 ];
 
-// Mapa de conjuntos completos generados de una sola pieza (CERO unión ni recortes por zonas)
+// Mapa completo de los 36 conjuntos posibles con sus prendas reales (todas las permutaciones tienen su foto completa instantánea)
 // Clave: `${topId || '-'}|${bottomId || '-'}|${shoesId || '-'}|${accessoryId || '-'}`
 const PREBUILT_FULL_OUTFITS: Record<string, string> = {
-  // Sin ropa (en pañal)
+  // Sin top ni bottom
   '-|-|-|-': '/bichito-studio-standing.jpg',
-
-  // Prendas individuales de cuerpo entero
-  'real-hoodie-navy|-|-|-': '/tryon-hoodie-navy.jpg',
-  'real-tee-sky|-|-|-': '/tryon-tee-sky.jpg',
-  '-|real-joggers-grey|-|-': '/tryon-joggers-grey.jpg',
-  '-|real-romper-cream|-|-': '/tryon-romper-cream.jpg',
   '-|-|real-socks-grey|-': '/tryon-socks-grey.jpg',
   '-|-|-|real-bib-dino': '/tryon-bib-dino.jpg',
+  '-|-|real-socks-grey|real-bib-dino': '/outfit-socks-bib.jpg',
 
-  // Conjuntos completos generados de una sola pieza (sin ningún corte ni difuminado)
-  'real-hoodie-navy|real-joggers-grey|real-socks-grey|-': '/outfit-hoodie-joggers-socks.jpg',
-  'real-hoodie-navy|real-joggers-grey|-|-': '/outfit-hoodie-joggers.jpg',
-  'real-tee-sky|real-joggers-grey|real-socks-grey|-': '/outfit-tee-joggers-socks.jpg',
-  'real-tee-sky|real-joggers-grey|-|-': '/outfit-tee-joggers.jpg',
+  // Solo Top (Polerón Azul Doggie Skate) + combinaciones de calcetines/babero
+  'real-hoodie-navy|-|-|-': '/tryon-hoodie-navy.jpg',
+  'real-hoodie-navy|-|real-socks-grey|-': '/outfit-hoodie-socks.jpg',
+  'real-hoodie-navy|-|-|real-bib-dino': '/outfit-hoodie-bib.jpg',
+  'real-hoodie-navy|-|real-socks-grey|real-bib-dino': '/outfit-hoodie-socks-bib.jpg',
+
+  // Solo Top (Polera Celeste) + combinaciones de calcetines/babero
+  'real-tee-sky|-|-|-': '/tryon-tee-sky.jpg',
+  'real-tee-sky|-|real-socks-grey|-': '/outfit-tee-socks.jpg',
+  'real-tee-sky|-|-|real-bib-dino': '/outfit-tee-bib.jpg',
+  'real-tee-sky|-|real-socks-grey|real-bib-dino': '/outfit-tee-socks-bib.jpg',
+
+  // Solo Bottom (Buzo Gris) + combinaciones de calcetines/babero
+  '-|real-joggers-grey|-|-': '/tryon-joggers-grey.jpg',
+  '-|real-joggers-grey|real-socks-grey|-': '/outfit-joggers-socks.jpg',
+  '-|real-joggers-grey|-|real-bib-dino': '/outfit-joggers-bib.jpg',
+  '-|real-joggers-grey|real-socks-grey|real-bib-dino': '/outfit-joggers-socks-bib.jpg',
+
+  // Jardinera Crema Jirafas (con o sin Polera/Polerón seleccionado) + combinaciones de calcetines/babero
+  '-|real-romper-cream|-|-': '/tryon-romper-cream.jpg',
+  '-|real-romper-cream|real-socks-grey|-': '/outfit-romper-socks.jpg',
+  '-|real-romper-cream|-|real-bib-dino': '/outfit-romper-bib.jpg',
+  '-|real-romper-cream|real-socks-grey|real-bib-dino': '/outfit-romper-socks-bib.jpg',
   'real-tee-sky|real-romper-cream|-|-': '/tryon-romper-cream.jpg',
   'real-tee-sky|real-romper-cream|real-socks-grey|-': '/outfit-romper-socks.jpg',
-  '-|real-romper-cream|real-socks-grey|-': '/outfit-romper-socks.jpg',
+  'real-tee-sky|real-romper-cream|-|real-bib-dino': '/outfit-romper-bib.jpg',
+  'real-tee-sky|real-romper-cream|real-socks-grey|real-bib-dino': '/outfit-romper-socks-bib.jpg',
+  'real-hoodie-navy|real-romper-cream|-|-': '/tryon-romper-cream.jpg',
+  'real-hoodie-navy|real-romper-cream|real-socks-grey|-': '/outfit-romper-socks.jpg',
+  'real-hoodie-navy|real-romper-cream|-|real-bib-dino': '/outfit-romper-bib.jpg',
+  'real-hoodie-navy|real-romper-cream|real-socks-grey|real-bib-dino': '/outfit-romper-socks-bib.jpg',
+
+  // Conjunto Polerón Doggie Skate + Buzo Gris + combinaciones de calcetines/babero
+  'real-hoodie-navy|real-joggers-grey|-|-': '/outfit-hoodie-joggers.jpg',
+  'real-hoodie-navy|real-joggers-grey|real-socks-grey|-': '/outfit-hoodie-joggers-socks.jpg',
+  'real-hoodie-navy|real-joggers-grey|-|real-bib-dino': '/outfit-hoodie-joggers-bib.jpg',
+  'real-hoodie-navy|real-joggers-grey|real-socks-grey|real-bib-dino': '/outfit-hoodie-joggers-socks-bib.jpg',
+
+  // Conjunto Polera Celeste + Buzo Gris + combinaciones de calcetines/babero
+  'real-tee-sky|real-joggers-grey|-|-': '/outfit-tee-joggers.jpg',
+  'real-tee-sky|real-joggers-grey|real-socks-grey|-': '/outfit-tee-joggers-socks.jpg',
+  'real-tee-sky|real-joggers-grey|-|real-bib-dino': '/outfit-tee-joggers-bib.jpg',
+  'real-tee-sky|real-joggers-grey|real-socks-grey|real-bib-dino': '/outfit-tee-joggers-socks-bib.jpg',
 };
 
 function getOutfitKey(outfit: {

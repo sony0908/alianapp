@@ -233,8 +233,14 @@ ${outfitLines.join('\n')}
       }
     }
 
+    const rawErr = errors.join(' | ');
+    const isFreeTierZeroQuota =
+      /Free Tier|limit:\s*0|Quota exceeded/i.test(rawErr);
+
     return response.status(502).json({
-      error: `No se pudo generar la imagen con Gemini: ${errors[0] || 'Verifica tu GEMINI_API_KEY'}`,
+      error: isFreeTierZeroQuota
+        ? 'Tu GEMINI_API_KEY en Vercel está en el plan gratuito (Free Tier), donde Google tiene límite 0 para generar imágenes nuevas. Activa Pay-as-you-go en Google AI Studio para generar prendas nuevas con IA.'
+        : `No se pudo generar la imagen con Gemini: ${errors[0] || 'Verifica tu GEMINI_API_KEY'}`,
       details: errors,
     });
   } catch (err) {
