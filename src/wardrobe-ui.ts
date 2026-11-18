@@ -11,6 +11,14 @@ const OUTFIT_CACHE_KEY = 'bichito-outfit-renders-v1';
 // Prendas reales de las fotos de tu hijo (cada una con su fotografía individual generada de cuerpo entero)
 const DEFAULT_REAL_ITEMS: ClothingItem[] = [
   {
+    id: 'item-1795033218687',
+    category: 'tops',
+    name: 'Polerón Azul con Rayas Beige',
+    color: '#2c486e',
+    subType: 'sweater',
+    tryOnUrl: '/tryon-poleron-rayas.jpg',
+  },
+  {
     id: 'real-hoodie-navy',
     category: 'tops',
     name: 'Polerón Azul Doggie Skate',
@@ -25,6 +33,14 @@ const DEFAULT_REAL_ITEMS: ClothingItem[] = [
     color: '#6ca0dc',
     subType: 'tshirt',
     tryOnUrl: '/tryon-tee-sky.jpg',
+  },
+  {
+    id: 'item-1795033245095',
+    category: 'bottoms',
+    name: 'Pantalón Azul',
+    color: '#2c486e',
+    subType: 'pants',
+    tryOnUrl: '/tryon-pantalon-azul.jpg',
   },
   {
     id: 'real-joggers-grey',
@@ -60,7 +76,7 @@ const DEFAULT_REAL_ITEMS: ClothingItem[] = [
   },
 ];
 
-// Mapa completo de los 36 conjuntos posibles con sus prendas reales (todas las permutaciones tienen su foto completa instantánea)
+// Mapa completo de todos los conjuntos posibles con sus prendas reales (todas las permutaciones tienen su foto completa instantánea)
 // Clave: `${topId || '-'}|${bottomId || '-'}|${shoesId || '-'}|${accessoryId || '-'}`
 const PREBUILT_FULL_OUTFITS: Record<string, string> = {
   // Sin top ni bottom
@@ -68,6 +84,12 @@ const PREBUILT_FULL_OUTFITS: Record<string, string> = {
   '-|-|real-socks-grey|-': '/tryon-socks-grey.jpg',
   '-|-|-|real-bib-dino': '/tryon-bib-dino.jpg',
   '-|-|real-socks-grey|real-bib-dino': '/outfit-socks-bib.jpg',
+
+  // Solo Top: Polerón Azul con Rayas Beige (nuevo subido desde el celular)
+  'item-1795033218687|-|-|-': '/tryon-poleron-rayas.jpg',
+  'item-1795033218687|-|real-socks-grey|-': '/outfit-rayas-socks.jpg',
+  'item-1795033218687|-|-|real-bib-dino': '/outfit-rayas-bib.jpg',
+  'item-1795033218687|-|real-socks-grey|real-bib-dino': '/outfit-rayas-socks-bib.jpg',
 
   // Solo Top (Polerón Azul Doggie Skate) + combinaciones de calcetines/babero
   'real-hoodie-navy|-|-|-': '/tryon-hoodie-navy.jpg',
@@ -80,6 +102,12 @@ const PREBUILT_FULL_OUTFITS: Record<string, string> = {
   'real-tee-sky|-|real-socks-grey|-': '/outfit-tee-socks.jpg',
   'real-tee-sky|-|-|real-bib-dino': '/outfit-tee-bib.jpg',
   'real-tee-sky|-|real-socks-grey|real-bib-dino': '/outfit-tee-socks-bib.jpg',
+
+  // Solo Bottom: Pantalón Azul (nuevo subido desde el celular)
+  '-|item-1795033245095|-|-': '/tryon-pantalon-azul.jpg',
+  '-|item-1795033245095|real-socks-grey|-': '/outfit-pantalon-azul-socks.jpg',
+  '-|item-1795033245095|-|real-bib-dino': '/outfit-pantalon-azul-bib.jpg',
+  '-|item-1795033245095|real-socks-grey|real-bib-dino': '/outfit-pantalon-azul-socks-bib.jpg',
 
   // Solo Bottom (Buzo Gris) + combinaciones de calcetines/babero
   '-|real-joggers-grey|-|-': '/tryon-joggers-grey.jpg',
@@ -100,6 +128,34 @@ const PREBUILT_FULL_OUTFITS: Record<string, string> = {
   'real-hoodie-navy|real-romper-cream|real-socks-grey|-': '/outfit-romper-socks.jpg',
   'real-hoodie-navy|real-romper-cream|-|real-bib-dino': '/outfit-romper-bib.jpg',
   'real-hoodie-navy|real-romper-cream|real-socks-grey|real-bib-dino': '/outfit-romper-socks-bib.jpg',
+  'item-1795033218687|real-romper-cream|-|-': '/tryon-romper-cream.jpg',
+  'item-1795033218687|real-romper-cream|real-socks-grey|-': '/outfit-romper-socks.jpg',
+  'item-1795033218687|real-romper-cream|-|real-bib-dino': '/outfit-romper-bib.jpg',
+  'item-1795033218687|real-romper-cream|real-socks-grey|real-bib-dino': '/outfit-romper-socks-bib.jpg',
+
+  // Conjunto Polerón Azul con Rayas Beige + Pantalón Azul (el que pediste desde el celular)
+  'item-1795033218687|item-1795033245095|-|-': '/outfit-rayas-azul.jpg',
+  'item-1795033218687|item-1795033245095|real-socks-grey|-': '/outfit-rayas-azul-socks.jpg',
+  'item-1795033218687|item-1795033245095|-|real-bib-dino': '/outfit-rayas-azul-bib.jpg',
+  'item-1795033218687|item-1795033245095|real-socks-grey|real-bib-dino': '/outfit-rayas-azul-socks-bib.jpg',
+
+  // Conjunto Polerón Azul con Rayas Beige + Buzo Gris
+  'item-1795033218687|real-joggers-grey|-|-': '/outfit-rayas-joggers.jpg',
+  'item-1795033218687|real-joggers-grey|real-socks-grey|-': '/outfit-rayas-joggers-socks.jpg',
+  'item-1795033218687|real-joggers-grey|-|real-bib-dino': '/outfit-rayas-joggers-bib.jpg',
+  'item-1795033218687|real-joggers-grey|real-socks-grey|real-bib-dino': '/outfit-rayas-joggers-socks-bib.jpg',
+
+  // Conjunto Polerón Doggie Skate + Pantalón Azul
+  'real-hoodie-navy|item-1795033245095|-|-': '/outfit-hoodie-pantalon-azul.jpg',
+  'real-hoodie-navy|item-1795033245095|real-socks-grey|-': '/outfit-hoodie-pantalon-azul-socks.jpg',
+  'real-hoodie-navy|item-1795033245095|-|real-bib-dino': '/outfit-hoodie-pantalon-azul-bib.jpg',
+  'real-hoodie-navy|item-1795033245095|real-socks-grey|real-bib-dino': '/outfit-hoodie-pantalon-azul-socks-bib.jpg',
+
+  // Conjunto Polera Celeste + Pantalón Azul
+  'real-tee-sky|item-1795033245095|-|-': '/outfit-tee-pantalon-azul.jpg',
+  'real-tee-sky|item-1795033245095|real-socks-grey|-': '/outfit-tee-pantalon-azul-socks.jpg',
+  'real-tee-sky|item-1795033245095|-|real-bib-dino': '/outfit-tee-pantalon-azul-bib.jpg',
+  'real-tee-sky|item-1795033245095|real-socks-grey|real-bib-dino': '/outfit-tee-pantalon-azul-socks-bib.jpg',
 
   // Conjunto Polerón Doggie Skate + Buzo Gris + combinaciones de calcetines/babero
   'real-hoodie-navy|real-joggers-grey|-|-': '/outfit-hoodie-joggers.jpg',
@@ -166,6 +222,23 @@ function compressImageBase64(file: File, maxSize = 640): Promise<string> {
   });
 }
 
+function canonicalItemId(item: ClothingItem | undefined): string {
+  if (!item) return '-';
+  if (PREBUILT_FULL_OUTFITS[`${item.id}|-|-|-`] || PREBUILT_FULL_OUTFITS[`-|${item.id}|-|-`]) {
+    return item.id;
+  }
+  const norm = item.name.toLowerCase();
+  if (norm.includes('raya')) return 'item-1795033218687';
+  if (norm.includes('pantal') && norm.includes('azul')) return 'item-1795033245095';
+  if (norm.includes('doggie') || (norm.includes('poler') && norm.includes('azul'))) return 'real-hoodie-navy';
+  if (norm.includes('celeste')) return 'real-tee-sky';
+  if (norm.includes('gris') && item.category === 'bottoms') return 'real-joggers-grey';
+  if (norm.includes('jardinera') || norm.includes('jirafa')) return 'real-romper-cream';
+  if (norm.includes('calcet')) return 'real-socks-grey';
+  if (norm.includes('babero') || norm.includes('dino')) return 'real-bib-dino';
+  return item.id;
+}
+
 // Obtiene la URL de la fotografía única del conjunto completo (sin unir nunca partes por separado)
 function resolveFullOutfitPhotoUrl(
   items: ClothingItem[],
@@ -183,9 +256,20 @@ function resolveFullOutfitPhotoUrl(
 
   const key = getOutfitKey(currentOutfit);
 
-  // 1. Verificar conjuntos pregenerados de fábrica
+  // 1. Verificar conjuntos pregenerados de fábrica por ID exacto o por ID canónico
   if (PREBUILT_FULL_OUTFITS[key]) {
     return { url: PREBUILT_FULL_OUTFITS[key], isExactMatch: true };
+  }
+
+  const canonicalKey = getOutfitKey({
+    topId: currentOutfit.topId ? canonicalItemId(items.find((i) => i.id === currentOutfit.topId)) : null,
+    bottomId: currentOutfit.bottomId ? canonicalItemId(items.find((i) => i.id === currentOutfit.bottomId)) : null,
+    shoesId: currentOutfit.shoesId ? canonicalItemId(items.find((i) => i.id === currentOutfit.shoesId)) : null,
+    accessoryId: currentOutfit.accessoryId ? canonicalItemId(items.find((i) => i.id === currentOutfit.accessoryId)) : null,
+  });
+
+  if (PREBUILT_FULL_OUTFITS[canonicalKey]) {
+    return { url: PREBUILT_FULL_OUTFITS[canonicalKey], isExactMatch: true };
   }
 
   // 2. Verificar conjuntos ya generados por IA y guardados en caché local

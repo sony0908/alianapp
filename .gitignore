@@ -1,4 +1,5 @@
 node_modules/
+antigravity-inbox/
 .env
 .env.*
 .DS_Store
