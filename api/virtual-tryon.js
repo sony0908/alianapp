@@ -137,10 +137,10 @@ ${outfitLines.join('\n')}
       }
     }
 
-    let lastErrorDetail = '';
+    const errors = [];
 
     // 1. Intentar con la API moderna Interactions (gemini-nano-banana-2.1 y gemini-3.1-flash-image)
-    const interactionModels = ['gemini-nano-banana-2.1', 'gemini-3.1-flash-image', 'gemini-2.5-flash-image'];
+    const interactionModels = ['gemini-nano-banana-2.1', 'gemini-3.1-flash-image', 'gemini-3.1-flash-lite-image', 'gemini-2.5-flash-image'];
     for (const modelName of interactionModels) {
       try {
         const inputArr = [
@@ -166,11 +166,6 @@ ${outfitLines.join('\n')}
               model: modelName,
               store: false,
               input: inputArr,
-              response_format: {
-                type: 'image',
-                mime_type: 'image/jpeg',
-                aspect_ratio: '3:4',
-              },
             }),
           }
         );
@@ -183,16 +178,17 @@ ${outfitLines.join('\n')}
               tryOnImage: `data:${extracted.mimeType};base64,${extracted.data}`,
             });
           }
+          errors.push(`${modelName}(int): no image in steps`);
         } else {
-          lastErrorDetail = intJson?.error?.message || `HTTP ${intRes.status}`;
+          errors.push(`${modelName}(int ${intRes.status}): ${intJson?.error?.message || 'err'}`);
         }
       } catch (e) {
-        lastErrorDetail = e.message || String(e);
+        errors.push(`${modelName}(int): ${e.message || String(e)}`);
       }
     }
 
     // 2. Fallback por generateContent REST directo
-    const genContentModels = ['gemini-2.5-flash-image', 'gemini-2.0-flash-exp-image-generation'];
+    const genContentModels = ['gemini-2.5-flash-image', 'gemini-3.1-flash-image', 'gemini-nano-banana-2.1'];
     for (const modelName of genContentModels) {
       try {
         const parts = [
@@ -228,16 +224,18 @@ ${outfitLines.join('\n')}
               tryOnImage: `data:${extracted.mimeType};base64,${extracted.data}`,
             });
           }
+          errors.push(`${modelName}(gc): no image in candidates`);
         } else {
-          lastErrorDetail = gcJson?.error?.message || `HTTP ${gcRes.status}`;
+          errors.push(`${modelName}(gc ${gcRes.status}): ${gcJson?.error?.message || 'err'}`);
         }
       } catch (e) {
-        lastErrorDetail = e.message || String(e);
+        errors.push(`${modelName}(gc): ${e.message || String(e)}`);
       }
     }
 
     return response.status(502).json({
-      error: `No se pudo generar la imagen con Gemini (${lastErrorDetail || 'Verifica tu GEMINI_API_KEY y cuota en Google AI Studio'}).`,
+      error: `No se pudo generar la imagen con Gemini: ${errors[0] || 'Verifica tu GEMINI_API_KEY'}`,
+      details: errors,
     });
   } catch (err) {
     console.error('Error en /api/virtual-tryon:', err);
