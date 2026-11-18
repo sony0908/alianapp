@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
-// Handler serverless para generar una imagen real del bebé vistiendo una prenda nueva o combinación con Gemini Image Generation
+// Handler serverless para generar UNA SOLA IMAGEN COMPLETA DEL CONJUNTO (sin unir recortes)
+// manteniendo las reglas estrictas del modelo base de tu hijo en el estudio.
 module.exports = async function handler(request, response) {
   if (request.method !== 'POST') {
     return response.status(405).json({ error: 'Método no permitido' });
@@ -10,7 +11,7 @@ module.exports = async function handler(request, response) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return response.status(503).json({
-      error: 'Configura GEMINI_API_KEY en Vercel para generar pruebas de ropa nuevas con IA.',
+      error: 'Configura GEMINI_API_KEY en Vercel para generar conjuntos nuevos con IA.',
     });
   }
 
@@ -20,9 +21,24 @@ module.exports = async function handler(request, response) {
         ? JSON.parse(request.body || '{}')
         : request.body || {};
 
-    const { garmentImage, garmentDescription, category } = body;
+    // Soporta tanto conjunto completo (items: [{ category, name, color, subType, photoUrl }]) como una prenda individual
+    const items = Array.isArray(body.items)
+      ? body.items
+      : body.garmentDescription
+        ? [
+            {
+              category: body.category || 'tops',
+              name: body.garmentDescription,
+              photoUrl: body.garmentImage,
+            },
+          ]
+        : [];
 
-    // Leer el retrato base de estudio del bebé en pañal
+    if (items.length === 0) {
+      return response.status(400).json({ error: 'Selecciona al menos una prenda para generar el conjunto.' });
+    }
+
+    // Leer el retrato base estricto de estudio del bebé
     const studioPathCandidates = [
       path.resolve(process.cwd(), 'public', 'bichito-studio-standing.jpg'),
       path.resolve(process.cwd(), 'dist', 'bichito-studio-standing.jpg'),
@@ -36,18 +52,35 @@ module.exports = async function handler(request, response) {
     const { GoogleGenAI } = await import('@google/genai');
     const ai = new GoogleGenAI({ apiKey });
 
-    const zoneInstruction =
-      category === 'tops'
-        ? 'dress his upper body (chest, shoulders and arms) in this exact garment, keeping his legs, white diaper, barefoot toes, exact face, hair, pose and cream studio background (#fff8f2) identical.'
-        : category === 'bottoms'
-          ? 'dress his lower body (waist and legs) in this exact garment, keeping his bare chest, arms, barefoot toes, exact face, hair, pose and cream studio background (#fff8f2) identical.'
-          : category === 'shoes'
-            ? 'put these exact socks/shoes on both of his feet, keeping his face, hair, bare chest, diaper, legs, pose and cream studio background (#fff8f2) identical.'
-            : 'put this exact baby accessory (bib around his neck or hat on his head) on him, keeping his exact face, pose, body and cream studio background (#fff8f2) identical.';
+    const outfitLines = items.map((it, idx) => {
+      const catLabel =
+        it.category === 'tops'
+          ? 'UPPER BODY (Top/Shirt/Sweater)'
+          : it.category === 'bottoms'
+            ? 'LOWER BODY (Pants/Joggers/Romper/Shorts)'
+            : it.category === 'shoes'
+              ? 'FEET (Socks/Shoes)'
+              : 'ACCESSORY (Bib/Hat)';
+      return `${idx + 1}. ${catLabel}: ${it.name} (color: ${it.color || 'as shown'}, type: ${it.subType || it.category})`;
+    });
+
+    const hasTop = items.some((i) => i.category === 'tops');
+    const hasBottom = items.some((i) => i.category === 'bottoms');
+    const hasShoes = items.some((i) => i.category === 'shoes');
 
     const parts = [
       {
-        text: `Edit the first studio photo of this standing baby boy. Keep his exact adorable face, head position, hair, pose, proportions, and warm cream studio background (#fff8f2) 100% pixel-aligned and identical, except ${zoneInstruction} Garment description: ${garmentDescription || 'baby clothing'}. Realistic cotton fabric folds, natural fit and soft studio shadows.`,
+        text: `Edit the first studio photograph of this exact standing 7-month-old baby boy.
+STRICT MODEL PRESERVATION RULES:
+- Keep his exact adorable face, facial expression, eyes, nose, smile, head tilt, wavy jet-black hair, hand positions, leg stance, body proportions, and warm cream studio background (#fff8f2) 100% identical to the first reference photograph.
+- Generate ONE SINGLE COHESIVE FULL-BODY PHOTOGRAPH of him wearing the following complete outfit naturally fitted together (never paste or cut separate regions):
+${outfitLines.join('\n')}
+- Cohesive fit rules:
+  ${hasTop && hasBottom ? '- The hem of the top must naturally overlap the waistband of the pants/bottoms with realistic fabric drape and zero exposed belly gap.' : ''}
+  ${!hasBottom ? '- Keep his white quilted baby diaper visible on his lower body.' : ''}
+  ${hasBottom && hasShoes ? '- The ankle cuffs of the pants and the socks/shoes must meet seamlessly with zero blur or cutoff.' : ''}
+  ${!hasShoes ? '- Keep his bare feet and baby toes clearly visible.' : ''}
+- Photorealistic cotton/knit textures, natural studio lighting and soft shadows.`,
       },
       {
         inlineData: {
@@ -57,14 +90,31 @@ module.exports = async function handler(request, response) {
       },
     ];
 
-    if (garmentImage && typeof garmentImage === 'string') {
-      const cleanGarment = garmentImage.replace(/^data:image\/\w+;base64,/, '');
-      parts.push({
-        inlineData: {
-          mimeType: 'image/jpeg',
-          data: cleanGarment,
-        },
-      });
+    // Adjuntar fotos de referencia de las prendas si están disponibles
+    for (const it of items) {
+      const url = it.photoUrl || it.tryOnUrl || '';
+      if (url.startsWith('data:image/')) {
+        const cleanData = url.replace(/^data:image\/\w+;base64,/, '');
+        parts.push({
+          inlineData: {
+            mimeType: 'image/jpeg',
+            data: cleanData,
+          },
+        });
+      } else if (url.startsWith('/')) {
+        const localFile = [
+          path.resolve(process.cwd(), 'public', url.slice(1)),
+          path.resolve(process.cwd(), 'dist', url.slice(1)),
+        ].find((p) => fs.existsSync(p));
+        if (localFile) {
+          parts.push({
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: fs.readFileSync(localFile).toString('base64'),
+            },
+          });
+        }
+      }
     }
 
     const res = await ai.models.generateContent({
@@ -91,7 +141,7 @@ module.exports = async function handler(request, response) {
   } catch (err) {
     console.error('Error en /api/virtual-tryon:', err);
     return response.status(500).json({
-      error: 'No se pudo generar la imagen con IA en este momento.',
+      error: 'No se pudo generar la imagen completa del conjunto con IA en este momento.',
     });
   }
 };

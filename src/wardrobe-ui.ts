@@ -1,19 +1,14 @@
 import { BabyStyle3D, ClothingCategory, ClothingItem } from './wardrobe3d';
-import {
-  EYE_PRESETS,
-  EyePresetKey,
-  HAIR_PRESETS,
-  HairPresetKey,
-  SKIN_PRESETS,
-  SkinPresetKey,
-} from './babyAssets';
 
 let wardrobeApp: BabyStyle3D | null = null;
 let analyzedSubType: string | null = null;
 let viewMode: 'photoStudio' | '3d' = 'photoStudio';
 let studioPose: 'standing' | 'sitting' = 'standing';
+let isGeneratingOutfit = false;
 
-// Imágenes fotorrealistas pregeneradas con las prendas reales de las fotos de tu hijo
+const OUTFIT_CACHE_KEY = 'bichito-outfit-renders-v1';
+
+// Prendas reales de las fotos de tu hijo (cada una con su fotografía individual generada de cuerpo entero)
 const DEFAULT_REAL_ITEMS: ClothingItem[] = [
   {
     id: 'real-hoodie-navy',
@@ -65,6 +60,57 @@ const DEFAULT_REAL_ITEMS: ClothingItem[] = [
   },
 ];
 
+// Mapa de conjuntos completos generados de una sola pieza (CERO unión ni recortes por zonas)
+// Clave: `${topId || '-'}|${bottomId || '-'}|${shoesId || '-'}|${accessoryId || '-'}`
+const PREBUILT_FULL_OUTFITS: Record<string, string> = {
+  // Sin ropa (en pañal)
+  '-|-|-|-': '/bichito-studio-standing.jpg',
+
+  // Prendas individuales de cuerpo entero
+  'real-hoodie-navy|-|-|-': '/tryon-hoodie-navy.jpg',
+  'real-tee-sky|-|-|-': '/tryon-tee-sky.jpg',
+  '-|real-joggers-grey|-|-': '/tryon-joggers-grey.jpg',
+  '-|real-romper-cream|-|-': '/tryon-romper-cream.jpg',
+  '-|-|real-socks-grey|-': '/tryon-socks-grey.jpg',
+  '-|-|-|real-bib-dino': '/tryon-bib-dino.jpg',
+
+  // Conjuntos completos generados de una sola pieza (sin ningún corte ni difuminado)
+  'real-hoodie-navy|real-joggers-grey|real-socks-grey|-': '/outfit-hoodie-joggers-socks.jpg',
+  'real-hoodie-navy|real-joggers-grey|-|-': '/outfit-hoodie-joggers.jpg',
+  'real-tee-sky|real-joggers-grey|real-socks-grey|-': '/outfit-tee-joggers-socks.jpg',
+  'real-tee-sky|real-joggers-grey|-|-': '/outfit-tee-joggers.jpg',
+  'real-tee-sky|real-romper-cream|-|-': '/tryon-romper-cream.jpg',
+  'real-tee-sky|real-romper-cream|real-socks-grey|-': '/outfit-romper-socks.jpg',
+  '-|real-romper-cream|real-socks-grey|-': '/outfit-romper-socks.jpg',
+};
+
+function getOutfitKey(outfit: {
+  topId: string | null;
+  bottomId: string | null;
+  shoesId: string | null;
+  accessoryId: string | null;
+}): string {
+  return `${outfit.topId || '-'}|${outfit.bottomId || '-'}|${outfit.shoesId || '-'}|${outfit.accessoryId || '-'}`;
+}
+
+function loadOutfitCache(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(OUTFIT_CACHE_KEY) || '{}') || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveOutfitToCache(key: string, dataUrl: string) {
+  try {
+    const cache = loadOutfitCache();
+    cache[key] = dataUrl;
+    localStorage.setItem(OUTFIT_CACHE_KEY, JSON.stringify(cache));
+  } catch (e) {
+    console.warn('Límite de localStorage al guardar conjunto en caché:', e);
+  }
+}
+
 // Redimensiona imágenes en el cliente para ahorrar memoria y evitar límites de localStorage
 function compressImageBase64(file: File, maxSize = 640): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -90,144 +136,121 @@ function compressImageBase64(file: File, maxSize = 640): Promise<string> {
   });
 }
 
-// Carga una imagen como HTMLImageElement
-const imageCache = new Map<string, HTMLImageElement>();
-function loadImg(url: string): Promise<HTMLImageElement> {
-  if (imageCache.has(url)) return Promise.resolve(imageCache.get(url)!);
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      imageCache.set(url, img);
-      resolve(img);
-    };
-    img.onerror = reject;
-    img.src = url;
-  });
+// Obtiene la URL de la fotografía única del conjunto completo (sin unir nunca partes por separado)
+function resolveFullOutfitPhotoUrl(
+  items: ClothingItem[],
+  currentOutfit: {
+    topId: string | null;
+    bottomId: string | null;
+    shoesId: string | null;
+    accessoryId: string | null;
+  },
+  pose: 'standing' | 'sitting'
+): { url: string; isExactMatch: boolean } {
+  if (pose === 'sitting') {
+    return { url: '/bichito-studio-sitting.jpg', isExactMatch: true };
+  }
+
+  const key = getOutfitKey(currentOutfit);
+
+  // 1. Verificar conjuntos pregenerados de fábrica
+  if (PREBUILT_FULL_OUTFITS[key]) {
+    return { url: PREBUILT_FULL_OUTFITS[key], isExactMatch: true };
+  }
+
+  // 2. Verificar conjuntos ya generados por IA y guardados en caché local
+  const cached = loadOutfitCache()[key];
+  if (cached) {
+    return { url: cached, isExactMatch: true };
+  }
+
+  // 3. Si solo hay 1 prenda seleccionada y tiene su foto completa individual (tryOnUrl)
+  const selectedIds = [
+    currentOutfit.topId,
+    currentOutfit.bottomId,
+    currentOutfit.shoesId,
+    currentOutfit.accessoryId,
+  ].filter(Boolean);
+
+  if (selectedIds.length === 1) {
+    const singleItem = items.find((i) => i.id === selectedIds[0]);
+    if (singleItem?.tryOnUrl) {
+      return { url: singleItem.tryOnUrl, isExactMatch: true };
+    }
+  }
+
+  // 4. Si es una combinación nueva que aún no ha sido generada como foto única,
+  // buscamos la foto completa más cercana mientras se genera la nueva con IA (sin cortar ni unir pedazos jamás)
+  const withoutAccKey = `${currentOutfit.topId || '-'}|${currentOutfit.bottomId || '-'}|${currentOutfit.shoesId || '-'}|-`;
+  if (PREBUILT_FULL_OUTFITS[withoutAccKey]) {
+    return { url: PREBUILT_FULL_OUTFITS[withoutAccKey], isExactMatch: false };
+  }
+  const withoutShoesKey = `${currentOutfit.topId || '-'}|${currentOutfit.bottomId || '-'}|-|-`;
+  if (PREBUILT_FULL_OUTFITS[withoutShoesKey]) {
+    return { url: PREBUILT_FULL_OUTFITS[withoutShoesKey], isExactMatch: false };
+  }
+  const topItem = items.find((i) => i.id === currentOutfit.topId);
+  if (topItem?.tryOnUrl) {
+    return { url: topItem.tryOnUrl, isExactMatch: false };
+  }
+  const botItem = items.find((i) => i.id === currentOutfit.bottomId);
+  if (botItem?.tryOnUrl) {
+    return { url: botItem.tryOnUrl, isExactMatch: false };
+  }
+
+  return { url: '/bichito-studio-standing.jpg', isExactMatch: selectedIds.length === 0 };
 }
 
-/**
- * Compone fotorrealísticamente la imagen de estudio de tu hijo combinando las fotografías generadas
- * de cada prenda real por zonas anatómicas con transición suave (feathered alpha mask),
- * de modo que NUNCA se vea un dibujo plano encima, sino la ropa real con sus pliegues y sombras.
- */
-async function renderPhotorealisticStudioCanvas(
-  canvas: HTMLCanvasElement,
-  topItem: ClothingItem | undefined,
-  botItem: ClothingItem | undefined,
-  shoeItem: ClothingItem | undefined,
-  accItem: ClothingItem | undefined,
-  pose: 'standing' | 'sitting'
-) {
-  const W = 896;
-  const H = 1200;
-  if (canvas.width !== W || canvas.height !== H) {
-    canvas.width = W;
-    canvas.height = H;
-  }
-  const ctx = canvas.getContext('2d')!;
+// Genera una fotografía nueva completa del conjunto actual con Gemini siguiendo las reglas estrictas del modelo base
+async function generateCurrentOutfitPhotoWithAI() {
+  if (!wardrobeApp || isGeneratingOutfit) return;
 
-  const baseSrc =
-    pose === 'standing'
-      ? '/bichito-studio-standing.jpg'
-      : '/bichito-studio-sitting.jpg';
+  const { items, currentOutfit } = wardrobeApp.state;
+  const selectedItems = [
+    items.find((i) => i.id === currentOutfit.topId),
+    items.find((i) => i.id === currentOutfit.bottomId),
+    items.find((i) => i.id === currentOutfit.shoesId),
+    items.find((i) => i.id === currentOutfit.accessoryId),
+  ].filter(Boolean) as ClothingItem[];
 
-  try {
-    const baseImg = await loadImg(baseSrc);
-    ctx.clearRect(0, 0, W, H);
-    ctx.drawImage(baseImg, 0, 0, W, H);
-  } catch {
+  if (selectedItems.length === 0) {
+    showWardrobeToast('Selecciona al menos una prenda para generar el conjunto');
     return;
   }
 
-  // En pose sentado mostramos el retrato limpio sentado
-  if (pose === 'sitting') return;
+  const key = getOutfitKey(currentOutfit);
+  isGeneratingOutfit = true;
+  renderWardrobeUI();
 
-  // Función auxiliar para fundir una región horizontal (yStart..yEnd) con borde difuminado suave (feather)
-  const blendLayerRegion = async (
-    imgUrl: string,
-    yStart: number,
-    yEnd: number,
-    featherTop = 28,
-    featherBottom = 28
-  ) => {
-    try {
-      const layerImg = await loadImg(imgUrl);
-      const off = document.createElement('canvas');
-      off.width = W;
-      off.height = H;
-      const oCtx = off.getContext('2d')!;
-      oCtx.drawImage(layerImg, 0, 0, W, H);
-
-      oCtx.globalCompositeOperation = 'destination-in';
-      const grad = oCtx.createLinearGradient(0, yStart - featherTop, 0, yEnd + featherBottom);
-      const totalSpan = yEnd + featherBottom - (yStart - featherTop);
-      const stop1 = Math.max(0.01, Math.min(0.45, featherTop / totalSpan));
-      const stop2 = Math.max(0.55, Math.min(0.99, 1 - featherBottom / totalSpan));
-
-      grad.addColorStop(0, 'rgba(0,0,0,0)');
-      grad.addColorStop(stop1, 'rgba(0,0,0,1)');
-      grad.addColorStop(stop2, 'rgba(0,0,0,1)');
-      grad.addColorStop(1, 'rgba(0,0,0,0)');
-
-      oCtx.fillStyle = grad;
-      oCtx.fillRect(0, Math.max(0, yStart - featherTop), W, totalSpan);
-
-      ctx.drawImage(off, 0, 0);
-    } catch (e) {
-      console.warn('Error cargando imagen de prenda real:', imgUrl, e);
-    }
-  };
-
-  // Caso especial: Jardinera crema (es un conjunto entero que ya trae la polera celeste debajo)
-  if (botItem?.id === 'real-romper-cream' && botItem.tryOnUrl) {
-    await blendLayerRegion(botItem.tryOnUrl, 315, 920, 26, 30);
-  } else {
-    // 1. Bottom (Buzo / Pantalón): desde la cintura (y=612) hasta los tobillos (y=1030)
-    if (botItem?.tryOnUrl) {
-      await blendLayerRegion(botItem.tryOnUrl, 615, 1028, 28, 22);
+  try {
+    const res = await fetch('/api/virtual-tryon', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: selectedItems.map((it) => ({
+          id: it.id,
+          category: it.category,
+          name: it.name,
+          color: it.color,
+          subType: it.subType,
+          photoUrl: it.photoUrl,
+          tryOnUrl: it.tryOnUrl,
+        })),
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.tryOnImage) {
+      throw new Error(data.error || 'No se pudo generar la foto del conjunto');
     }
 
-    // 2. Top (Polerón / Polera): desde el cuello/hombros (y=310) hasta la cintura (y=685)
-    // Se dibuja después del pantalón para que la caída del polerón o polera cubra naturalmente la pretina del pantalón
-    if (topItem?.tryOnUrl) {
-      const bottomEdge = botItem?.tryOnUrl ? 672 : 715;
-      await blendLayerRegion(topItem.tryOnUrl, 305, bottomEdge, 24, 26);
-    }
-  }
-
-  // 3. Calzado / Calcetines: desde el tobillo (y=985) hasta la punta de los pies (y=1185)
-  if (shoeItem?.tryOnUrl) {
-    await blendLayerRegion(shoeItem.tryOnUrl, 988, 1185, 22, 10);
-  }
-
-  // 4. Accesorios (Babero bandana o gorrito): si es babero, va sobre el cuello y pecho alto (y=315..520)
-  if (accItem?.tryOnUrl) {
-    if (accItem.subType === 'bib' && !topItem) {
-      await blendLayerRegion(accItem.tryOnUrl, 318, 535, 22, 28);
-    } else if (accItem.subType === 'bib' && topItem) {
-      // Recorte suave en V solo para el babero sobre la polera
-      try {
-        const bibImg = await loadImg(accItem.tryOnUrl);
-        const off = document.createElement('canvas');
-        off.width = W;
-        off.height = H;
-        const oCtx = off.getContext('2d')!;
-        oCtx.save();
-        oCtx.beginPath();
-        oCtx.moveTo(335, 318);
-        oCtx.quadraticCurveTo(448, 348, 561, 318);
-        oCtx.quadraticCurveTo(585, 455, 448, 520);
-        oCtx.quadraticCurveTo(311, 455, 335, 318);
-        oCtx.closePath();
-        oCtx.clip();
-        oCtx.drawImage(bibImg, 0, 0, W, H);
-        oCtx.restore();
-        ctx.drawImage(off, 0, 0);
-      } catch {}
-    } else {
-      await blendLayerRegion(accItem.tryOnUrl, 30, 260, 15, 25);
-    }
+    saveOutfitToCache(key, data.tryOnImage);
+    showWardrobeToast('✨ ¡Fotografía completa del conjunto generada!');
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Error al generar el conjunto con IA';
+    showWardrobeToast(msg);
+  } finally {
+    isGeneratingOutfit = false;
+    renderWardrobeUI();
   }
 }
 
@@ -249,7 +272,7 @@ export function initWardrobe3D() {
           <span class="wardrobe-icon">👶</span>
           <div>
             <h2>Probador de Bichito</h2>
-            <small>Fotos reales de tu bebé con cada prenda puesta</small>
+            <small>Fotografías completas por conjunto sobre el modelo base de tu hijo</small>
           </div>
         </div>
         <div class="wardrobe-top-actions">
@@ -260,7 +283,7 @@ export function initWardrobe3D() {
         </div>
       </header>
 
-      <!-- Zona Principal: Categorías + Visor Fotorrealista + Mis Combinaciones -->
+      <!-- Zona Principal: Categorías + Visor Fotorrealista de Imagen Única + Mis Combinaciones -->
       <div class="wardrobe-main-layout">
         <!-- Selector Lateral de Categorías -->
         <aside class="wardrobe-categories">
@@ -282,19 +305,24 @@ export function initWardrobe3D() {
           </button>
         </aside>
 
-        <!-- Visor Principal -->
+        <!-- Visor Principal: Una sola fotografía generada por conjunto (CERO uniones ni recortes) -->
         <main class="wardrobe-3d-stage" style="position: relative;">
-          <!-- 1. Vista Estudio Fotorrealista de tu Hijo -->
-          <div id="photo-studio-stage" class="photo-studio-viewport" style="position:relative; width:100%; height:450px; display:flex; align-items:center; justify-content:center; background:#f8ecde; overflow:hidden;">
-            <canvas id="studio-composite-canvas" width="896" height="1200" style="max-width:100%; max-height:100%; width:auto; height:100%; object-fit:contain; display:block;"></canvas>
-            <div class="rotate-hint" style="bottom: 12px;">
-              <span>✨ Toca cualquier prenda abajo para vérsela puesta de verdad</span>
+          <div id="photo-studio-stage" class="photo-studio-viewport" style="position:relative; width:100%; height:460px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#f8ecde; overflow:hidden;">
+            <img id="studio-full-outfit-img" src="/outfit-hoodie-joggers-socks.jpg" alt="Tu bebé con el conjunto puesto" style="max-width:100%; max-height:100%; width:auto; height:100%; object-fit:contain; display:block; transition: opacity 0.2s;" />
+            
+            <!-- Botón flotante cuando armas una combinación personalizada nueva para generarla de una pieza con IA -->
+            <button id="btn-generate-combo-ai" class="hide" style="position:absolute; bottom:46px; left:50%; transform:translateX(-50%); background:var(--o); color:#fff; border:2px solid #fff; border-radius:99px; padding:10px 18px; font-size:0.82rem; font-weight:850; box-shadow:0 8px 24px rgba(38,49,59,0.28); z-index:3;">
+              ✨ Generar foto completa de este conjunto con IA
+            </button>
+
+            <div class="rotate-hint" id="studio-outfit-caption" style="bottom: 10px;">
+              <span>✨ Fotografía completa generada sobre el modelo base de tu hijo</span>
             </div>
           </div>
 
           <!-- 2. Visor 3D Interactivo 360° -->
-          <div id="three-stage-wrapper" class="hide" style="position:relative; width:100%; height:450px;">
-            <div id="three-stage" class="three-viewport" style="width:100%; height:450px;"></div>
+          <div id="three-stage-wrapper" class="hide" style="position:relative; width:100%; height:460px;">
+            <div id="three-stage" class="three-viewport" style="width:100%; height:460px;"></div>
             <div class="rotate-hint" id="rotate-hint">
               <span class="rotate-arrow">⤹ 360° ⤸</span>
               <span>Arrastra para girar el modelo 3D</span>
@@ -329,7 +357,7 @@ export function initWardrobe3D() {
           <h2>Probar Prenda Nueva con IA</h2>
           <button class="x" id="btn-close-upload-modal">×</button>
         </div>
-        <p class="note">Sube una foto de la prenda. Gemini AI analizará la ropa y <b>generará una foto real de tu hijo teniéndola puesta</b>.</p>
+        <p class="note">Sube una foto de la prenda. Gemini AI generará <b>una fotografía completa nueva</b> de tu hijo con el conjunto puesto respetando el modelo base.</p>
         
         <div class="upload-dropzone" id="dropzone">
           <input type="file" id="clothing-file-input" accept="image/*" class="hide" />
@@ -395,7 +423,6 @@ export function initWardrobe3D() {
   renderWardrobeUI();
 }
 
-// Asegura que todas las prendas reales tengan su imagen fotorrealista asociada (incluso si el navegador tenía datos viejos en localStorage)
 function ensureRealTryOnItems() {
   if (!wardrobeApp) return;
   let updated = false;
@@ -412,13 +439,50 @@ function ensureRealTryOnItems() {
     }
   });
 
-  // Si no hay ningún look puesto al iniciar por primera vez, le ponemos el Polerón Doggie Skate + Buzo Gris para que se vea vestido de verdad enseguida
+  // Conjunto inicial por defecto: Polerón Doggie Skate + Buzo Gris + Calcetines Grises (imagen única completa)
   const { topId, bottomId, shoesId, accessoryId } = wardrobeApp.state.currentOutfit;
-  if (!topId && !bottomId && !shoesId && !accessoryId && !localStorage.getItem('bichito-tryon-init-v2')) {
+  if (!topId && !bottomId && !shoesId && !accessoryId && !localStorage.getItem('bichito-tryon-init-v3')) {
     wardrobeApp.state.currentOutfit.topId = 'real-hoodie-navy';
     wardrobeApp.state.currentOutfit.bottomId = 'real-joggers-grey';
     wardrobeApp.state.currentOutfit.shoesId = 'real-socks-grey';
-    localStorage.setItem('bichito-tryon-init-v2', '1');
+    localStorage.setItem('bichito-tryon-init-v3', '1');
+    updated = true;
+  }
+
+  // Asegurar combinaciones guardadas de ejemplo con las fotos completas de sus conjuntos reales
+  if (wardrobeApp.state.savedOutfits.length === 0) {
+    wardrobeApp.state.savedOutfits = [
+      {
+        id: 'look-doggie-skate',
+        name: 'Look Doggie Skate Completo',
+        topId: 'real-hoodie-navy',
+        bottomId: 'real-joggers-grey',
+        shoesId: 'real-socks-grey',
+        accessoryId: null,
+        tryOnUrl: '/outfit-hoodie-joggers-socks.jpg',
+        createdAt: 'Conjunto real',
+      },
+      {
+        id: 'look-celeste-joggers',
+        name: 'Polera Celeste + Buzo Gris',
+        topId: 'real-tee-sky',
+        bottomId: 'real-joggers-grey',
+        shoesId: 'real-socks-grey',
+        accessoryId: null,
+        tryOnUrl: '/outfit-tee-joggers-socks.jpg',
+        createdAt: 'Conjunto real',
+      },
+      {
+        id: 'look-jardinera-jirafas',
+        name: 'Jardinera Jirafas + Polera',
+        topId: 'real-tee-sky',
+        bottomId: 'real-romper-cream',
+        shoesId: 'real-socks-grey',
+        accessoryId: null,
+        tryOnUrl: '/outfit-romper-socks.jpg',
+        createdAt: 'Conjunto real',
+      },
+    ];
     updated = true;
   }
 
@@ -436,6 +500,7 @@ function setupEventListeners() {
   const btnPoseToggle = document.getElementById('btn-pose-toggle');
   const studioStage = document.getElementById('photo-studio-stage');
   const threeWrapper = document.getElementById('three-stage-wrapper');
+  const btnGenCombo = document.getElementById('btn-generate-combo-ai');
 
   const updateViewMode = () => {
     const isStudio = viewMode === 'photoStudio';
@@ -463,7 +528,11 @@ function setupEventListeners() {
   btnPoseToggle?.addEventListener('click', () => {
     studioPose = studioPose === 'standing' ? 'sitting' : 'standing';
     renderWardrobeUI();
-    showWardrobeToast(studioPose === 'standing' ? 'Pose: De pie (con probador de ropa)' : 'Pose: Sentado en estudio');
+    showWardrobeToast(studioPose === 'standing' ? 'Pose: De pie' : 'Pose: Sentado en estudio');
+  });
+
+  btnGenCombo?.addEventListener('click', () => {
+    generateCurrentOutfitPhotoWithAI();
   });
 
   // Selector de categorías
@@ -481,7 +550,7 @@ function setupEventListeners() {
   document.getElementById('btn-clear-outfit')?.addEventListener('click', () => {
     wardrobeApp?.clearOutfit();
     renderWardrobeUI();
-    showWardrobeToast('Bebé solo con pañal');
+    showWardrobeToast('Bebé en pañal (modelo base)');
   });
 
   // Guardar Look
@@ -607,7 +676,6 @@ function setupEventListeners() {
     }
   });
 
-  // Confirmar añadir prenda y generar imagen fotorrealista con /api/virtual-tryon
   confirmBtn?.addEventListener('click', async () => {
     if (!wardrobeApp) return;
     const nameInput = document.getElementById('input-clothing-name') as HTMLInputElement;
@@ -634,20 +702,26 @@ function setupEventListeners() {
     let generatedTryOnUrl: string | undefined;
 
     if (aiStatus && aiStatusText) {
-      aiStatusText.textContent = 'Generando foto real de tu bebé con esta prenda puesta (10-15 s)...';
+      aiStatusText.textContent = 'Generando fotografía completa de tu bebé con esta prenda puesta (10-15 s)...';
       aiStatus.classList.remove('hide');
     }
     confirmBtn.disabled = true;
-    confirmBtn.textContent = '⏳ Vistiendo a tu bebé con IA...';
+    confirmBtn.textContent = '⏳ Generando fotografía completa con IA...';
 
     try {
       const tryRes = await fetch('/api/virtual-tryon', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          garmentImage: photoUrl.startsWith('data:') ? photoUrl : undefined,
-          garmentDescription: `${name} (color ${color}, ${analyzedSubType || defaultSubType})`,
-          category,
+          items: [
+            {
+              category,
+              name,
+              color,
+              subType: analyzedSubType || defaultSubType,
+              photoUrl: photoUrl.startsWith('data:') ? photoUrl : undefined,
+            },
+          ],
         }),
       });
       if (tryRes.ok) {
@@ -664,7 +738,7 @@ function setupEventListeners() {
       confirmBtn.textContent = '✨ Generar Foto en mi Bebé y Guardar';
     }
 
-    wardrobeApp.addCustomClothing({
+    const added = wardrobeApp.addCustomClothing({
       name,
       category,
       color,
@@ -673,11 +747,22 @@ function setupEventListeners() {
       tryOnUrl: generatedTryOnUrl,
     });
 
+    if (generatedTryOnUrl) {
+      // Dejar seleccionada únicamente la prenda recién generada o registrar el conjunto en caché
+      const singleOutfit = {
+        topId: category === 'tops' ? added.id : null,
+        bottomId: category === 'bottoms' ? added.id : null,
+        shoesId: category === 'shoes' ? added.id : null,
+        accessoryId: category === 'accessories' ? added.id : null,
+      };
+      saveOutfitToCache(getOutfitKey(singleOutfit), generatedTryOnUrl);
+    }
+
     modal?.close();
     renderWardrobeUI();
     showWardrobeToast(
       generatedTryOnUrl
-        ? `¡Foto de tu bebé con "${name}" generada!`
+        ? `¡Fotografía de tu bebé con "${name}" lista!`
         : `¡"${name}" guardada en tu armario!`
     );
   });
@@ -688,21 +773,45 @@ function renderWardrobeUI() {
 
   const { items, currentOutfit, savedOutfits, activeCategory } = wardrobeApp.state;
 
-  // Renderizar la composición fotorrealista en el canvas de estudio
-  const studioCanvas = document.getElementById('studio-composite-canvas') as HTMLCanvasElement | null;
-  if (studioCanvas) {
-    const topItem = items.find((i) => i.id === currentOutfit.topId);
-    const botItem = items.find((i) => i.id === currentOutfit.bottomId);
-    const shoeItem = items.find((i) => i.id === currentOutfit.shoesId);
-    const accItem = items.find((i) => i.id === currentOutfit.accessoryId);
-    renderPhotorealisticStudioCanvas(
-      studioCanvas,
-      topItem,
-      botItem,
-      shoeItem,
-      accItem,
-      studioPose
-    );
+  // Mostrar SIEMPRE una única fotografía completa (jamás unir recortes)
+  const fullImgEl = document.getElementById('studio-full-outfit-img') as HTMLImageElement | null;
+  const genComboBtn = document.getElementById('btn-generate-combo-ai') as HTMLButtonElement | null;
+  const captionEl = document.getElementById('studio-outfit-caption');
+
+  if (fullImgEl) {
+    const { url, isExactMatch } = resolveFullOutfitPhotoUrl(items, currentOutfit, studioPose);
+    if (fullImgEl.getAttribute('src') !== url) {
+      fullImgEl.src = url;
+    }
+    fullImgEl.style.opacity = isGeneratingOutfit ? '0.55' : '1';
+
+    if (genComboBtn) {
+      if (isGeneratingOutfit) {
+        genComboBtn.classList.remove('hide');
+        genComboBtn.disabled = true;
+        genComboBtn.textContent = '⏳ Generando foto única del conjunto con IA...';
+      } else if (!isExactMatch && studioPose === 'standing') {
+        genComboBtn.classList.remove('hide');
+        genComboBtn.disabled = false;
+        genComboBtn.textContent = '✨ Generar foto completa de este conjunto con IA';
+      } else {
+        genComboBtn.classList.add('hide');
+      }
+    }
+
+    if (captionEl) {
+      const activeNames = [
+        items.find((i) => i.id === currentOutfit.topId)?.name,
+        items.find((i) => i.id === currentOutfit.bottomId)?.name,
+        items.find((i) => i.id === currentOutfit.shoesId)?.name,
+        items.find((i) => i.id === currentOutfit.accessoryId)?.name,
+      ].filter(Boolean);
+      captionEl.innerHTML = `<span>${
+        activeNames.length
+          ? `👶 Usando: <b>${escapeHtml(activeNames.join(' + '))}</b>`
+          : '👶 Modelo base de estudio (en pañal)'
+      }</span>`;
+    }
   }
 
   // 1. Selector de categorías
@@ -722,7 +831,7 @@ function renderWardrobeUI() {
     catTitleEl.textContent = titles[activeCategory];
   }
 
-  // 2. Carrusel de Prendas Reales con miniatura de cómo le queda puesta
+  // 2. Carrusel de Prendas Reales
   const carousel = document.getElementById('clothing-carousel');
   if (carousel) {
     const filteredItems = items.filter((i) => i.category === activeCategory);
@@ -777,6 +886,10 @@ function renderWardrobeUI() {
         const item = items.find((i) => i.id === itemId);
         if (item && wardrobeApp) {
           wardrobeApp.selectClothing(item);
+          // Si selecciona la jardinera crema (que ya incluye su polera celeste), ajustamos el top automáticamente para mostrar el conjunto real exacto
+          if (item.id === 'real-romper-cream' && wardrobeApp.state.currentOutfit.bottomId === 'real-romper-cream') {
+            wardrobeApp.state.currentOutfit.topId = 'real-tee-sky';
+          }
           if (studioPose !== 'standing') {
             studioPose = 'standing';
           }
@@ -841,8 +954,9 @@ function renderWardrobeUI() {
           const outfitId = (card as HTMLElement).dataset.outfitId;
           if (outfitId && wardrobeApp) {
             wardrobeApp.wearSavedOutfit(outfitId);
+            if (studioPose !== 'standing') studioPose = 'standing';
             renderWardrobeUI();
-            showWardrobeToast('¡Conjunto puesto en el bebé!');
+            showWardrobeToast('¡Conjunto completo puesto en el bebé!');
           }
         });
       });
