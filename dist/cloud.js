@@ -1,5 +1,5 @@
 const META_KEY = "bichito-vault-v2";
-const SYNCED_KEYS = ["bichito-v2", "bichito-family-v1", "bichito-ai-guidance-v1"];
+const SYNCED_KEYS = ["bichito-v2", "bichito-family-v1", "bichito-ai-guidance-v1", "bichito-wardrobe-v1"];
 const VAULT_API = "/api/family-vault";
 const POLL_INTERVAL_MS = 25000;
 
@@ -17,6 +17,7 @@ const payload = () => ({
   routines: readJson("bichito-v2", {}),
   family: readJson("bichito-family-v1", {}),
   guidance: localStorage.getItem("bichito-ai-guidance-v1") || "",
+  wardrobe: readJson("bichito-wardrobe-v1", {}),
 });
 
 let pairing = readMeta();
@@ -118,6 +119,8 @@ function mergePayload(remote, local) {
   Object.entries(localRoutines.cryChecks || {}).forEach(([date, checks]) => {
     mergedChecks[date] = { ...(mergedChecks[date] || {}), ...checks };
   });
+  const remoteWardrobe = remote?.wardrobe || {};
+  const localWardrobe = local?.wardrobe || {};
   return {
     routines: {
       ...remoteRoutines,
@@ -134,6 +137,12 @@ function mergePayload(remote, local) {
       stock: mergeById(remoteFamily.stock, localFamily.stock),
     },
     guidance: local?.guidance || remote?.guidance || "",
+    wardrobe: {
+      ...remoteWardrobe,
+      ...localWardrobe,
+      items: mergeById(remoteWardrobe.items, localWardrobe.items),
+      savedOutfits: mergeById(remoteWardrobe.savedOutfits, localWardrobe.savedOutfits),
+    },
   };
 }
 
@@ -143,6 +152,9 @@ function applyPayload(value) {
     localStorage.setItem("bichito-v2", JSON.stringify(value.routines || {}));
     localStorage.setItem("bichito-family-v1", JSON.stringify(value.family || {}));
     localStorage.setItem("bichito-ai-guidance-v1", value.guidance || "");
+    if (value.wardrobe && Object.keys(value.wardrobe).length > 0) {
+      localStorage.setItem("bichito-wardrobe-v1", JSON.stringify(value.wardrobe));
+    }
   } finally {
     applyingRemote = false;
   }

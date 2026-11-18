@@ -11,6 +11,7 @@ const familyVaultHandler = require('./api/family-vault.js');
 const bichitoGuidanceHandler = require('./api/bichito-guidance.js');
 const analyzeClothingHandler = require('./api/analyze-clothing.js');
 const virtualTryonHandler = require('./api/virtual-tryon.js');
+const wardrobeQueueHandler = require('./api/wardrobe-queue.js');
 
 async function startServer() {
   const app = express();
@@ -35,6 +36,10 @@ async function startServer() {
 
   app.all('/api/virtual-tryon', (req, res) => {
     return virtualTryonHandler(req, res);
+  });
+
+  app.all('/api/wardrobe-queue', (req, res) => {
+    return wardrobeQueueHandler(req, res);
   });
 
   // Serve static files from public and dist

@@ -8,6 +8,7 @@
     "start": "tsx server.ts",
     "build": "esbuild src/wardrobe-ui.ts --bundle --format=esm --outfile=dist/wardrobe.js --minify && node -e \"const fs=require('fs');fs.cpSync('dist/wardrobe.js','public/wardrobe.js');fs.cpSync('public','dist',{recursive:true});fs.cpSync('index.html','dist/index.html');\"",
     "preview": "tsx server.ts",
+    "sync-wardrobe": "node scripts/fetch-wardrobe-inbox.mjs",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"
   },

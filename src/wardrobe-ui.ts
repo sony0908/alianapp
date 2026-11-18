@@ -231,7 +231,7 @@ function resolveFullOutfitPhotoUrl(
   return { url: '/bichito-studio-standing.jpg', isExactMatch: selectedIds.length === 0 };
 }
 
-// Genera una fotografía nueva completa del conjunto actual con Gemini siguiendo las reglas estrictas del modelo base
+// Genera una fotografía nueva completa del conjunto actual o la envía a la bandeja de Antigravity
 async function generateCurrentOutfitPhotoWithAI() {
   if (!wardrobeApp || isGeneratingOutfit) return;
 
@@ -252,32 +252,48 @@ async function generateCurrentOutfitPhotoWithAI() {
   isGeneratingOutfit = true;
   renderWardrobeUI();
 
+  const itemPayload = selectedItems.map((it) => ({
+    id: it.id,
+    category: it.category,
+    name: it.name,
+    color: it.color,
+    subType: it.subType,
+    photoUrl: it.photoUrl,
+    tryOnUrl: it.tryOnUrl,
+  }));
+
   try {
     const res = await fetch('/api/virtual-tryon', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        items: selectedItems.map((it) => ({
-          id: it.id,
-          category: it.category,
-          name: it.name,
-          color: it.color,
-          subType: it.subType,
-          photoUrl: it.photoUrl,
-          tryOnUrl: it.tryOnUrl,
-        })),
-      }),
+      body: JSON.stringify({ items: itemPayload }),
     });
     const data = await res.json();
-    if (!res.ok || !data.tryOnImage) {
-      throw new Error(data.error || 'No se pudo generar la foto del conjunto');
+    if (res.ok && data.tryOnImage) {
+      saveOutfitToCache(key, data.tryOnImage);
+      showWardrobeToast('✨ ¡Fotografía completa del conjunto generada!');
+    } else {
+      // Enviar automáticamente el pedido y las fotos a la bandeja en la nube para Antigravity
+      await fetch('/api/wardrobe-queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'enqueue',
+          item: {
+            id: `outfit-${Date.now()}`,
+            kind: 'outfit',
+            name: selectedItems.map((i) => i.name).join(' + '),
+            outfitKey: key,
+            outfitItems: itemPayload,
+          },
+        }),
+      });
+      showWardrobeToast(
+        '📥 Conjunto enviado a tu bandeja de Antigravity. Se generará apenas abras el PC.'
+      );
     }
-
-    saveOutfitToCache(key, data.tryOnImage);
-    showWardrobeToast('✨ ¡Fotografía completa del conjunto generada!');
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Error al generar el conjunto con IA';
-    showWardrobeToast(msg);
+  } catch {
+    showWardrobeToast('No se pudo conectar con el servidor en este momento.');
   } finally {
     isGeneratingOutfit = false;
     renderWardrobeUI();
@@ -778,7 +794,6 @@ function setupEventListeners() {
     });
 
     if (generatedTryOnUrl) {
-      // Dejar seleccionada únicamente la prenda recién generada o registrar el conjunto en caché
       const singleOutfit = {
         topId: category === 'tops' ? added.id : null,
         bottomId: category === 'bottoms' ? added.id : null,
@@ -786,6 +801,24 @@ function setupEventListeners() {
         accessoryId: category === 'accessories' ? added.id : null,
       };
       saveOutfitToCache(getOutfitKey(singleOutfit), generatedTryOnUrl);
+    } else {
+      // Enviar la foto de la prenda directamente a la bandeja de Antigravity en la nube
+      fetch('/api/wardrobe-queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'enqueue',
+          item: {
+            id: added.id,
+            kind: 'garment',
+            name: added.name,
+            category: added.category,
+            color: added.color,
+            subType: added.subType,
+            photoUrl: added.photoUrl,
+          },
+        }),
+      }).catch(() => {});
     }
 
     modal?.close();
@@ -793,7 +826,7 @@ function setupEventListeners() {
     showWardrobeToast(
       generatedTryOnUrl
         ? `¡Fotografía de tu bebé con "${name}" lista!`
-        : `¡"${name}" guardada en tu armario!`
+        : `📥 "${name}" guardada y enviada a Antigravity para generar su foto real.`
     );
   });
 }
