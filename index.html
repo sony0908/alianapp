@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta
       name="viewport"
-      content="width=device-width,initial-scale=1,viewport-fit=cover"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"
     />
     <meta name="theme-color" content="#df7446" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -33,32 +33,47 @@
       }
       * {
         box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+      html, body {
+        width: 100%;
+        max-width: 100vw;
+        overflow-x: hidden;
+        overscroll-behavior-x: none;
+        margin: 0;
+        padding: 0;
       }
       body {
         color: var(--i);
         background: linear-gradient(145deg, #fff8f2, #fff5ee 55%, #f3f6fa);
-        margin: 0;
         font: 16px ui-rounded, SF Pro Rounded, system-ui, sans-serif;
+        position: relative;
       }
       .app {
-        max-width: 720px;
+        width: 100%;
+        max-width: 540px;
         min-height: 100dvh;
-        padding: 24px 20px calc(122px + env(safe-area-inset-bottom));
-        margin: auto;
+        padding: 16px 14px calc(110px + env(safe-area-inset-bottom));
+        margin: 0 auto;
+        overflow-x: hidden;
       }
       .top, .head, .row {
         justify-content: space-between;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
         display: flex;
+        min-width: 0;
       }
       .top-actions {
         gap: 7px;
         display: flex;
+        flex-shrink: 0;
       }
       .brand {
-        font-size: 1.35rem;
+        font-size: 1.3rem;
         font-weight: 850;
+        display: flex;
+        align-items: center;
       }
       .brand b {
         background: var(--o);
@@ -69,6 +84,7 @@
         height: 34px;
         margin-right: 8px;
         display: inline-grid;
+        flex-shrink: 0;
       }
       .icon, button {
         font: inherit;
@@ -87,18 +103,18 @@
       }
       .date {
         color: var(--m);
-        margin: 24px 0 5px;
-        font-size: .86rem;
+        margin: 18px 0 4px;
+        font-size: .84rem;
         font-weight: 700;
       }
       h1 {
-        letter-spacing: -.06em;
+        letter-spacing: -.05em;
         margin: 0;
-        font-size: clamp(1.8rem, 6vw, 2.4rem);
+        font-size: clamp(1.55rem, 5.5vw, 2.1rem);
       }
       h2 {
         margin: 0;
-        font-size: 1.05rem;
+        font-size: 1.02rem;
       }
       .card, .panel {
         background: var(--s);
@@ -187,76 +203,87 @@
       /* Tarjetas de Cronómetros por Parámetro */
       .timers-grid {
         display: grid;
-        gap: 14px;
-        margin-top: 16px;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
+        margin-top: 14px;
+        width: 100%;
       }
       .param-card {
         background: var(--s);
         border: 1.5px solid var(--l);
-        border-radius: 24px;
-        padding: 18px;
-        box-shadow: 0 10px 26px rgba(91, 57, 35, 0.06);
+        border-radius: 22px;
+        padding: 16px;
+        box-shadow: 0 8px 22px rgba(91, 57, 35, 0.06);
         transition: border-color 0.25s, background-color 0.25s, box-shadow 0.25s;
+        width: 100%;
+        min-width: 0;
+        overflow: hidden;
       }
       .param-card.is-active {
         border-color: var(--o);
         background: linear-gradient(155deg, #fffdfb 30%, #fff4ec 100%);
-        box-shadow: 0 14px 32px rgba(223, 116, 70, 0.14);
+        box-shadow: 0 12px 28px rgba(223, 116, 70, 0.14);
       }
       .param-card.feed-card.is-active {
         border-color: var(--b);
         background: linear-gradient(155deg, #fffdfb 30%, #eef7fd 100%);
-        box-shadow: 0 14px 32px rgba(94, 157, 204, 0.16);
+        box-shadow: 0 12px 28px rgba(94, 157, 204, 0.16);
       }
       .param-card.diaper-card.is-active {
         border-color: var(--g);
         background: linear-gradient(155deg, #fffdfb 30%, #eefaf3 100%);
-        box-shadow: 0 14px 32px rgba(79, 157, 115, 0.16);
+        box-shadow: 0 12px 28px rgba(79, 157, 115, 0.16);
       }
       .param-top {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 10px;
+        gap: 8px;
+        min-width: 0;
       }
       .param-title-group {
         display: flex;
         align-items: center;
         gap: 10px;
+        min-width: 0;
+        flex: 1;
       }
       .param-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 13px;
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
         display: grid;
         place-items: center;
-        font-size: 1.25rem;
+        font-size: 1.2rem;
         background: var(--p);
         border: 1px solid var(--l);
+        flex-shrink: 0;
       }
       .param-name {
-        font-size: 1.05rem;
+        font-size: 1.02rem;
         font-weight: 850;
         margin: 0;
       }
       .param-sub {
-        font-size: 0.78rem;
+        font-size: 0.77rem;
         color: var(--m);
         margin-top: 2px;
         display: block;
+        overflow-wrap: anywhere;
       }
       .state-pill {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        padding: 5px 11px;
+        gap: 5px;
+        padding: 5px 10px;
         border-radius: 99px;
-        font-size: 0.75rem;
+        font-size: 0.73rem;
         font-weight: 800;
         background: var(--p);
         color: var(--m);
         border: 1px solid var(--l);
         white-space: nowrap;
+        flex-shrink: 0;
       }
       .state-pill .pulse {
         width: 8px;
@@ -299,52 +326,57 @@
         justify-content: space-between;
         flex-wrap: wrap;
         gap: 8px;
-        margin: 14px 0 8px;
+        margin: 12px 0 8px;
       }
       .chrono-digits {
         font-variant-numeric: tabular-nums;
-        font-size: clamp(1.7rem, 5.5vw, 2.15rem);
+        font-size: clamp(1.65rem, 6vw, 2.05rem);
         font-weight: 900;
         letter-spacing: -0.03em;
         color: var(--i);
       }
       .chrono-context {
-        font-size: 0.8rem;
+        font-size: 0.78rem;
         font-weight: 750;
         color: var(--m);
       }
       .param-meta {
-        font-size: 0.82rem;
+        font-size: 0.81rem;
         color: var(--m);
         background: rgba(255, 248, 242, 0.75);
         border: 1px solid var(--l);
         border-radius: 13px;
-        padding: 9px 12px;
-        margin-bottom: 13px;
+        padding: 9px 11px;
+        margin-bottom: 12px;
         line-height: 1.4;
+        overflow-wrap: anywhere;
+        word-break: break-word;
       }
       .param-meta b {
         color: var(--i);
       }
       .param-actions {
         display: grid;
-        grid-template-columns: 1.35fr 1fr;
-        gap: 9px;
+        grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+        gap: 8px;
+        width: 100%;
       }
       .btn-state-toggle {
         border: 0;
-        border-radius: 15px;
-        padding: 13px 14px;
-        font-size: 0.88rem;
+        border-radius: 14px;
+        padding: 12px 10px;
+        font-size: 0.84rem;
         font-weight: 850;
         background: var(--o);
         color: #fff;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 7px;
+        gap: 6px;
         box-shadow: 0 5px 15px rgba(223, 116, 70, 0.25);
         transition: transform 0.12s, background 0.2s;
+        min-width: 0;
+        text-align: center;
       }
       .btn-state-toggle:active {
         transform: scale(0.98);
@@ -365,15 +397,17 @@
         border: 1.5px solid var(--l);
         background: var(--s);
         color: var(--i);
-        border-radius: 15px;
-        padding: 12px 12px;
-        font-size: 0.82rem;
+        border-radius: 14px;
+        padding: 11px 8px;
+        font-size: 0.8rem;
         font-weight: 800;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 5px;
+        gap: 4px;
         transition: border-color 0.2s, background 0.2s;
+        min-width: 0;
+        text-align: center;
       }
       .btn-add-details:hover {
         border-color: var(--o);
@@ -386,7 +420,7 @@
       }
 
       .quick {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 9px;
         margin-top: 11px;
         display: grid;
@@ -394,19 +428,22 @@
       .quick button {
         border: 1px solid var(--l);
         background: var(--s);
-        min-height: 62px;
+        min-height: 58px;
         color: var(--i);
-        border-radius: 17px;
-        font-size: .8rem;
+        border-radius: 16px;
+        font-size: .79rem;
         font-weight: 750;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
+        gap: 7px;
+        padding: 8px;
+        min-width: 0;
       }
       .quick-icons, .quick-mic {
         font-size: 1.15rem;
         line-height: 1;
+        flex-shrink: 0;
       }
       .learn {
         background: var(--bs);
@@ -414,27 +451,29 @@
         border: 0;
         border-radius: 18px;
         margin-top: 12px;
-        padding: 13px 15px;
-        font-size: .82rem;
+        padding: 12px 14px;
+        font-size: .81rem;
         line-height: 1.45;
+        overflow-wrap: anywhere;
       }
       .cry-intro {
         color: var(--m);
         margin: 9px 0 0;
-        font-size: .84rem;
+        font-size: .83rem;
         line-height: 1.4;
       }
       .cry-list {
         gap: 8px;
         margin-top: 12px;
         display: grid;
+        grid-template-columns: minmax(0, 1fr);
       }
       .cry-item {
         border: 1px solid var(--l);
         background: var(--s);
         cursor: pointer;
         border-radius: 16px;
-        grid-template-columns: 22px 1fr;
+        grid-template-columns: 22px minmax(0, 1fr);
         align-items: start;
         gap: 9px;
         padding: 12px;
@@ -448,6 +487,7 @@
       }
       .cry-item b, .cry-item small {
         display: block;
+        overflow-wrap: anywhere;
       }
       .cry-item small {
         color: var(--m);
@@ -471,6 +511,7 @@
         margin-top: 12px;
         padding: 13px;
         font: .84rem/1.5 ui-rounded, SF Pro Rounded, system-ui, sans-serif;
+        overflow-wrap: anywhere;
       }
       .ai-result:empty {
         display: none;
@@ -484,12 +525,15 @@
         gap: 9px;
         margin-top: 11px;
         display: grid;
+        grid-template-columns: minmax(0, 1fr);
       }
       .row {
         border: 1px solid var(--l);
         background: var(--s);
         border-radius: 17px;
-        padding: 12px;
+        padding: 11px;
+        width: 100%;
+        min-width: 0;
       }
       .row .main {
         text-align: left;
@@ -498,6 +542,7 @@
         background: 0 0;
         border: 0;
         flex: 1;
+        overflow: hidden;
       }
       .row b, .row small {
         display: block;
@@ -510,17 +555,19 @@
       }
       .row time {
         color: var(--m);
-        font-size: .8rem;
+        font-size: .78rem;
+        flex-shrink: 0;
       }
       .row-detail-btn {
         border: 1px solid var(--l);
         background: var(--p);
         color: var(--o);
         border-radius: 10px;
-        padding: 5px 9px;
-        font-size: 0.73rem;
+        padding: 5px 8px;
+        font-size: 0.72rem;
         font-weight: 800;
         white-space: nowrap;
+        flex-shrink: 0;
       }
       .x, .link {
         color: var(--o);
@@ -1037,9 +1084,9 @@
     </dialog>
 
     <div class="toast" id="toast"></div>
-    <script src="/app.js?v=20261118-1215"></script>
-    <script src="/family.js?v=20261118-1215"></script>
-    <script type="module" src="/cloud.js?v=20261118-1215"></script>
-    <script type="module" src="/wardrobe.js?v=20261118-1355"></script>
+    <script src="/app.js?v=20261118-1415"></script>
+    <script src="/family.js?v=20261118-1415"></script>
+    <script type="module" src="/cloud.js?v=20261118-1415"></script>
+    <script type="module" src="/wardrobe.js?v=20261118-1415"></script>
   </body>
 </html>
