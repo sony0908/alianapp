@@ -1,0 +1,1045 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#df7446" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Bichito" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/favicon.svg" />
+    <title>AlianApp Bichito - Android Native Mobile App</title>
+    <meta name="description" content="App nativa para Android y experiencia móvil fluida para familias: bóveda familiar (Family Vault), registro diario, hitos pediátricos y guía inteligente Bichito." />
+    <meta property="og:title" content="AlianApp Bichito - Android Native Mobile App" />
+    <meta property="og:description" content="App nativa para Android y experiencia móvil fluida para familias: bóveda familiar (Family Vault), registro diario, hitos pediátricos y guía inteligente Bichito." />
+    <meta property="og:type" content="website" />
+    <link rel="stylesheet" href="/wardrobe.css" />
+    <style>
+      :root {
+        --o: #df7446;
+        --os: #fde3d5;
+        --b: #5e9dcc;
+        --bs: #e0eff9;
+        --g: #4f9d73;
+        --gs: #dff3e8;
+        --i: #26313b;
+        --m: #69747e;
+        --p: #fff8f2;
+        --s: #fffdfb;
+        --l: #eee2d8;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        color: var(--i);
+        background: linear-gradient(145deg, #fff8f2, #fff5ee 55%, #f3f6fa);
+        margin: 0;
+        font: 16px ui-rounded, SF Pro Rounded, system-ui, sans-serif;
+      }
+      .app {
+        max-width: 720px;
+        min-height: 100dvh;
+        padding: 24px 20px calc(122px + env(safe-area-inset-bottom));
+        margin: auto;
+      }
+      .top, .head, .row {
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        display: flex;
+      }
+      .top-actions {
+        gap: 7px;
+        display: flex;
+      }
+      .brand {
+        font-size: 1.35rem;
+        font-weight: 850;
+      }
+      .brand b {
+        background: var(--o);
+        color: #fff;
+        border-radius: 12px;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        margin-right: 8px;
+        display: inline-grid;
+      }
+      .icon, button {
+        font: inherit;
+        cursor: pointer;
+      }
+      .icon {
+        border: 1px solid var(--l);
+        background: var(--s);
+        border-radius: 14px;
+        width: 42px;
+        height: 42px;
+      }
+      .icon.cloud-ready {
+        border-color: var(--b);
+        color: #3f7196;
+      }
+      .date {
+        color: var(--m);
+        margin: 24px 0 5px;
+        font-size: .86rem;
+        font-weight: 700;
+      }
+      h1 {
+        letter-spacing: -.06em;
+        margin: 0;
+        font-size: clamp(1.8rem, 6vw, 2.4rem);
+      }
+      h2 {
+        margin: 0;
+        font-size: 1.05rem;
+      }
+      .card, .panel {
+        background: var(--s);
+        border-radius: 25px;
+        box-shadow: 0 14px 34px #5b392312;
+      }
+      .card {
+        margin-top: 17px;
+        padding: 21px;
+        position: relative;
+        overflow: hidden;
+      }
+      .card:after {
+        content: "";
+        background: var(--os);
+        border-radius: 50%;
+        width: 170px;
+        height: 170px;
+        position: absolute;
+        top: -85px;
+        right: -70px;
+      }
+      .card > * {
+        z-index: 1;
+        position: relative;
+      }
+      .state {
+        color: var(--m);
+        letter-spacing: .09em;
+        text-transform: uppercase;
+        font-size: .74rem;
+        font-weight: 800;
+      }
+      .title {
+        margin: 5px 0;
+        font-size: 1.25rem;
+        font-weight: 850;
+      }
+      .copy, .small {
+        color: var(--m);
+        line-height: 1.45;
+      }
+      .copy {
+        margin: 0;
+        font-size: .9rem;
+      }
+      .timer {
+        aspect-ratio: 1;
+        border: 4px solid var(--o);
+        background: var(--p);
+        text-align: center;
+        border-radius: 50%;
+        flex: 0 0 74px;
+        place-items: center;
+        width: 74px;
+        min-width: 74px;
+        height: 74px;
+        min-height: 74px;
+        font-size: .82rem;
+        font-weight: 850;
+        display: grid;
+      }
+      .bar {
+        background: linear-gradient(90deg, var(--b), #b5cad9 40%, #e5ad78 70%, var(--o));
+        border-radius: 20px;
+        height: 9px;
+        margin-top: 20px;
+        position: relative;
+      }
+      .dot {
+        border: 3px solid var(--i);
+        background: #fff;
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        transition: left .4s ease;
+        position: absolute;
+        top: -4px;
+        left: 15%;
+        transform: translateX(-50%);
+      }
+      .section {
+        margin-top: 24px;
+      }
+
+      /* Tarjetas de Cronómetros por Parámetro */
+      .timers-grid {
+        display: grid;
+        gap: 14px;
+        margin-top: 16px;
+      }
+      .param-card {
+        background: var(--s);
+        border: 1.5px solid var(--l);
+        border-radius: 24px;
+        padding: 18px;
+        box-shadow: 0 10px 26px rgba(91, 57, 35, 0.06);
+        transition: border-color 0.25s, background-color 0.25s, box-shadow 0.25s;
+      }
+      .param-card.is-active {
+        border-color: var(--o);
+        background: linear-gradient(155deg, #fffdfb 30%, #fff4ec 100%);
+        box-shadow: 0 14px 32px rgba(223, 116, 70, 0.14);
+      }
+      .param-card.feed-card.is-active {
+        border-color: var(--b);
+        background: linear-gradient(155deg, #fffdfb 30%, #eef7fd 100%);
+        box-shadow: 0 14px 32px rgba(94, 157, 204, 0.16);
+      }
+      .param-card.diaper-card.is-active {
+        border-color: var(--g);
+        background: linear-gradient(155deg, #fffdfb 30%, #eefaf3 100%);
+        box-shadow: 0 14px 32px rgba(79, 157, 115, 0.16);
+      }
+      .param-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .param-title-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .param-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 13px;
+        display: grid;
+        place-items: center;
+        font-size: 1.25rem;
+        background: var(--p);
+        border: 1px solid var(--l);
+      }
+      .param-name {
+        font-size: 1.05rem;
+        font-weight: 850;
+        margin: 0;
+      }
+      .param-sub {
+        font-size: 0.78rem;
+        color: var(--m);
+        margin-top: 2px;
+        display: block;
+      }
+      .state-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 11px;
+        border-radius: 99px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        background: var(--p);
+        color: var(--m);
+        border: 1px solid var(--l);
+        white-space: nowrap;
+      }
+      .state-pill .pulse {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--m);
+      }
+      .param-card.is-active .state-pill {
+        background: var(--os);
+        color: #b85327;
+        border-color: #f3c2a9;
+      }
+      .param-card.is-active .state-pill .pulse {
+        background: var(--o);
+        animation: pulseAnim 1.4s infinite;
+      }
+      .param-card.feed-card.is-active .state-pill {
+        background: var(--bs);
+        color: #2f6994;
+        border-color: #b7d8f0;
+      }
+      .param-card.feed-card.is-active .state-pill .pulse {
+        background: var(--b);
+      }
+      .param-card.diaper-card.is-active .state-pill {
+        background: var(--gs);
+        color: #2c724d;
+        border-color: #b5e0c7;
+      }
+      .param-card.diaper-card.is-active .state-pill .pulse {
+        background: var(--g);
+      }
+      @keyframes pulseAnim {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.35); opacity: 0.55; }
+      }
+      .param-chrono-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 14px 0 8px;
+      }
+      .chrono-digits {
+        font-variant-numeric: tabular-nums;
+        font-size: clamp(1.7rem, 5.5vw, 2.15rem);
+        font-weight: 900;
+        letter-spacing: -0.03em;
+        color: var(--i);
+      }
+      .chrono-context {
+        font-size: 0.8rem;
+        font-weight: 750;
+        color: var(--m);
+      }
+      .param-meta {
+        font-size: 0.82rem;
+        color: var(--m);
+        background: rgba(255, 248, 242, 0.75);
+        border: 1px solid var(--l);
+        border-radius: 13px;
+        padding: 9px 12px;
+        margin-bottom: 13px;
+        line-height: 1.4;
+      }
+      .param-meta b {
+        color: var(--i);
+      }
+      .param-actions {
+        display: grid;
+        grid-template-columns: 1.35fr 1fr;
+        gap: 9px;
+      }
+      .btn-state-toggle {
+        border: 0;
+        border-radius: 15px;
+        padding: 13px 14px;
+        font-size: 0.88rem;
+        font-weight: 850;
+        background: var(--o);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        box-shadow: 0 5px 15px rgba(223, 116, 70, 0.25);
+        transition: transform 0.12s, background 0.2s;
+      }
+      .btn-state-toggle:active {
+        transform: scale(0.98);
+      }
+      .param-card.is-active .btn-state-toggle {
+        background: var(--i);
+        box-shadow: 0 5px 15px rgba(38, 49, 59, 0.22);
+      }
+      .param-card.feed-card:not(.is-active) .btn-state-toggle {
+        background: var(--b);
+        box-shadow: 0 5px 15px rgba(94, 157, 204, 0.25);
+      }
+      .param-card.diaper-card:not(.is-active) .btn-state-toggle {
+        background: var(--g);
+        box-shadow: 0 5px 15px rgba(79, 157, 115, 0.25);
+      }
+      .btn-add-details {
+        border: 1.5px solid var(--l);
+        background: var(--s);
+        color: var(--i);
+        border-radius: 15px;
+        padding: 12px 12px;
+        font-size: 0.82rem;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        transition: border-color 0.2s, background 0.2s;
+      }
+      .btn-add-details:hover {
+        border-color: var(--o);
+        background: var(--p);
+      }
+      .btn-add-details.needs-detail {
+        border-color: #e5ad78;
+        background: #fff9f2;
+        color: #9e4e27;
+      }
+
+      .quick {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 9px;
+        margin-top: 11px;
+        display: grid;
+      }
+      .quick button {
+        border: 1px solid var(--l);
+        background: var(--s);
+        min-height: 62px;
+        color: var(--i);
+        border-radius: 17px;
+        font-size: .8rem;
+        font-weight: 750;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      .quick-icons, .quick-mic {
+        font-size: 1.15rem;
+        line-height: 1;
+      }
+      .learn {
+        background: var(--bs);
+        color: #3f7196;
+        border: 0;
+        border-radius: 18px;
+        margin-top: 12px;
+        padding: 13px 15px;
+        font-size: .82rem;
+        line-height: 1.45;
+      }
+      .cry-intro {
+        color: var(--m);
+        margin: 9px 0 0;
+        font-size: .84rem;
+        line-height: 1.4;
+      }
+      .cry-list {
+        gap: 8px;
+        margin-top: 12px;
+        display: grid;
+      }
+      .cry-item {
+        border: 1px solid var(--l);
+        background: var(--s);
+        cursor: pointer;
+        border-radius: 16px;
+        grid-template-columns: 22px 1fr;
+        align-items: start;
+        gap: 9px;
+        padding: 12px;
+        display: grid;
+      }
+      .cry-item input {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--o);
+        margin: 1px 0 0;
+      }
+      .cry-item b, .cry-item small {
+        display: block;
+      }
+      .cry-item small {
+        color: var(--m);
+        margin-top: 3px;
+        font-size: .78rem;
+        line-height: 1.35;
+      }
+      .cry-item.done {
+        background: #fff7f1;
+        border-color: #f0c5ae;
+      }
+      .cry-item.done b, .cry-item.done small {
+        -webkit-text-decoration: line-through #d6a48b;
+        text-decoration: line-through #d6a48b;
+      }
+      .ai-result {
+        color: #38566a;
+        white-space: pre-wrap;
+        background: #f5fafc;
+        border-radius: 15px;
+        margin-top: 12px;
+        padding: 13px;
+        font: .84rem/1.5 ui-rounded, SF Pro Rounded, system-ui, sans-serif;
+      }
+      .ai-result:empty {
+        display: none;
+      }
+      .ai-status {
+        color: var(--m);
+        margin-top: 9px;
+        font-size: .8rem;
+      }
+      .timeline {
+        gap: 9px;
+        margin-top: 11px;
+        display: grid;
+      }
+      .row {
+        border: 1px solid var(--l);
+        background: var(--s);
+        border-radius: 17px;
+        padding: 12px;
+      }
+      .row .main {
+        text-align: left;
+        min-width: 0;
+        color: var(--i);
+        background: 0 0;
+        border: 0;
+        flex: 1;
+      }
+      .row b, .row small {
+        display: block;
+      }
+      .row small {
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        margin-top: 2px;
+        overflow: hidden;
+      }
+      .row time {
+        color: var(--m);
+        font-size: .8rem;
+      }
+      .row-detail-btn {
+        border: 1px solid var(--l);
+        background: var(--p);
+        color: var(--o);
+        border-radius: 10px;
+        padding: 5px 9px;
+        font-size: 0.73rem;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+      .x, .link {
+        color: var(--o);
+        background: 0 0;
+        border: 0;
+        font-weight: 800;
+      }
+      .empty {
+        color: var(--m);
+        text-align: center;
+        border: 1px dashed #d9cbbf;
+        border-radius: 18px;
+        padding: 22px;
+      }
+      .nav {
+        z-index: 4;
+        left: 50%;
+        bottom: calc(10px + env(safe-area-inset-bottom));
+        border: 1px solid var(--l);
+        -webkit-backdrop-filter: blur(15px);
+        backdrop-filter: blur(15px);
+        background: #fffdfbe8;
+        border-radius: 22px;
+        grid-template-columns: repeat(4, 1fr);
+        width: min(460px, 100% - 24px);
+        padding: 7px;
+        display: grid;
+        position: fixed;
+        transform: translate(-50%);
+        box-shadow: 0 13px 35px #402c2029;
+      }
+      .nav button {
+        color: var(--m);
+        background: 0 0;
+        border: 0;
+        border-radius: 15px;
+        padding: 8px 4px;
+        font-size: .74rem;
+      }
+      .nav .active {
+        background: var(--os);
+        color: var(--o);
+        font-weight: 800;
+      }
+      .panel {
+        margin-top: 18px;
+        padding: 18px;
+      }
+      .stats {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin: 16px 0;
+        display: grid;
+      }
+      .stat {
+        text-align: center;
+        background: #f8f0eb;
+        border-radius: 15px;
+        padding: 11px 5px;
+      }
+      .stat b, .stat span {
+        display: block;
+      }
+      .stat span {
+        color: var(--m);
+        margin-top: 3px;
+        font-size: .7rem;
+      }
+      .feed-insights {
+        background: #eef7fd;
+        border: 1px solid #cbe3f5;
+        border-radius: 16px;
+        padding: 13px;
+        margin-bottom: 16px;
+        font-size: 0.82rem;
+        color: #2c5b7c;
+        line-height: 1.45;
+      }
+      .feed-insights b {
+        display: block;
+        margin-bottom: 4px;
+        color: #1f4968;
+      }
+      .days {
+        gap: 8px;
+        display: grid;
+      }
+      .day {
+        text-align: left;
+        width: 100%;
+      }
+      .day.selected {
+        border-color: var(--o);
+        background: var(--os);
+      }
+      .actions {
+        grid-template-columns: 1fr 1fr;
+        gap: 9px;
+        margin-top: 15px;
+        display: grid;
+      }
+      .secondary, .primary {
+        border-radius: 15px;
+        width: 100%;
+        padding: 13px;
+        font-weight: 800;
+      }
+      .secondary {
+        border: 1px solid var(--l);
+        background: var(--s);
+        color: var(--i);
+      }
+      .primary {
+        background: var(--o);
+        color: #fff;
+        border: 0;
+      }
+      .hide {
+        display: none !important;
+      }
+      dialog {
+        background: var(--s);
+        width: min(500px, 100% - 30px);
+        color: var(--i);
+        border: 0;
+        border-radius: 24px;
+        padding: 0;
+        box-shadow: 0 28px 90px #231d1844;
+      }
+      dialog::backdrop {
+        background: #27221d65;
+      }
+      .sheet {
+        padding: 21px;
+      }
+      .field {
+        gap: 6px;
+        margin-top: 15px;
+        font-size: .88rem;
+        font-weight: 750;
+        display: grid;
+      }
+      .field input, .field select, .field textarea {
+        border: 1px solid var(--l);
+        background: #fff;
+        border-radius: 13px;
+        padding: 12px;
+        font-size: 16px;
+      }
+      .details {
+        display: none;
+      }
+      .details.show {
+        display: block;
+      }
+      .check {
+        align-items: flex-start;
+        gap: 9px;
+        margin: 17px 0;
+        font-size: .87rem;
+        font-weight: 650;
+        display: flex;
+      }
+      .note {
+        color: var(--m);
+        font-size: .82rem;
+        line-height: 1.45;
+      }
+      .qr {
+        border: 1px solid var(--l);
+        text-align: center;
+        background: #fffdfb;
+        border-radius: 18px;
+        max-width: 320px;
+        margin: 16px auto 4px;
+        padding: 12px;
+      }
+      .qr img {
+        border-radius: 8px;
+        width: min(280px, 100%);
+        height: auto;
+        margin: 0 auto;
+        display: block;
+      }
+      .break {
+        overflow-wrap: anywhere;
+      }
+      .toast {
+        z-index: 5;
+        background: var(--i);
+        color: #fff;
+        opacity: 0;
+        border-radius: 14px;
+        padding: 11px 15px;
+        transition: all .2s;
+        position: fixed;
+        bottom: 100px;
+        left: 50%;
+        transform: translate(-50%, 15px);
+        pointer-events: none;
+      }
+      .toast.show {
+        opacity: 1;
+        transform: translate(-50%);
+      }
+      @media (width >= 700px) {
+        .app {
+          padding-left: 32px;
+          padding-right: 32px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header class="top">
+        <div class="brand"><b>◡</b>Bichito</div>
+        <div class="top-actions">
+          <button class="icon" id="cloud" title="Nube familiar" aria-label="Nube familiar">☁</button>
+          <button class="icon" id="settings" title="Ajustes" aria-label="Ajustes">⚙</button>
+        </div>
+      </header>
+
+      <section id="today">
+        <p class="date" id="date"></p>
+        <h1 id="heading">El ritmo de Bichito</h1>
+
+        <!-- Cronómetros en Vivo por Parámetro (2 Estados + Añadir Detalles) -->
+        <div class="timers-grid">
+          <!-- 1. SUEÑO -->
+          <article class="param-card sleep-card" id="sleepCard">
+            <div class="param-top">
+              <div class="param-title-group">
+                <div class="param-icon">🌙</div>
+                <div>
+                  <h2 class="param-name">Sueño y ventana</h2>
+                  <span class="param-sub" id="sleepSub">Calculando ritmo…</span>
+                </div>
+              </div>
+              <span class="state-pill" id="sleepStatePill">
+                <i class="pulse"></i>
+                <span id="sleepStateLabel">Despierto</span>
+              </span>
+            </div>
+            <div class="param-chrono-row">
+              <div class="chrono-digits" id="sleepChrono">00:00:00</div>
+              <div class="chrono-context" id="sleepChronoContext">tiempo despierto</div>
+            </div>
+            <div class="bar" style="margin: 10px 0 14px;">
+              <i class="dot" id="dot"></i>
+            </div>
+            <div class="param-meta" id="sleepMeta"></div>
+            <div class="param-actions">
+              <button type="button" class="btn-state-toggle" id="btnToggleSleep">
+                <span id="btnSleepIcon">🌙</span>
+                <span id="btnSleepText">Se durmió</span>
+              </button>
+              <button type="button" class="btn-add-details" id="btnDetailSleep">
+                ✎ Añadir detalles
+              </button>
+            </div>
+          </article>
+
+          <!-- 2. LECHE / HAMBRE -->
+          <article class="param-card feed-card" id="feedCard">
+            <div class="param-top">
+              <div class="param-title-group">
+                <div class="param-icon">🍼</div>
+                <div>
+                  <h2 class="param-name">Leche y hambre</h2>
+                  <span class="param-sub" id="feedSub">Desde que empieza con hambre hasta terminar</span>
+                </div>
+              </div>
+              <span class="state-pill" id="feedStatePill">
+                <i class="pulse"></i>
+                <span id="feedStateLabel">Satisfecho</span>
+              </span>
+            </div>
+            <div class="param-chrono-row">
+              <div class="chrono-digits" id="feedChrono">00:00:00</div>
+              <div class="chrono-context" id="feedChronoContext">desde la última leche</div>
+            </div>
+            <div class="param-meta" id="feedMeta"></div>
+            <div class="param-actions">
+              <button type="button" class="btn-state-toggle" id="btnToggleFeed">
+                <span id="btnFeedIcon">🍼</span>
+                <span id="btnFeedText">Empezó con hambre</span>
+              </button>
+              <button type="button" class="btn-add-details" id="btnDetailFeed">
+                ✎ Añadir detalles
+              </button>
+            </div>
+          </article>
+
+          <!-- 3. PAÑAL -->
+          <article class="param-card diaper-card" id="diaperCard">
+            <div class="param-top">
+              <div class="param-title-group">
+                <div class="param-icon">🧷</div>
+                <div>
+                  <h2 class="param-name">Pañal</h2>
+                  <span class="param-sub" id="diaperSub">Control de cambios e higiene</span>
+                </div>
+              </div>
+              <span class="state-pill" id="diaperStatePill">
+                <i class="pulse"></i>
+                <span id="diaperStateLabel">Pañal limpio</span>
+              </span>
+            </div>
+            <div class="param-chrono-row">
+              <div class="chrono-digits" id="diaperChrono">00:00:00</div>
+              <div class="chrono-context" id="diaperChronoContext">desde el último cambio</div>
+            </div>
+            <div class="param-meta" id="diaperMeta"></div>
+            <div class="param-actions">
+              <button type="button" class="btn-state-toggle" id="btnToggleDiaper">
+                <span id="btnDiaperIcon">🧷</span>
+                <span id="btnDiaperText">Pañal cambiado</span>
+              </button>
+              <button type="button" class="btn-add-details" id="btnDetailDiaper">
+                ✎ Añadir detalles
+              </button>
+            </div>
+          </article>
+        </div>
+
+        <div class="learn" id="learn"></div>
+
+        <!-- Registro manual anterior o nota por voz -->
+        <section class="section">
+          <div class="head">
+            <h2>Otros registros o notas</h2>
+          </div>
+          <div class="quick">
+            <button id="manualQuick">
+              <span class="quick-icons">＋</span><span>Registro manual / Nota</span>
+            </button>
+            <button id="voice">
+              <span class="quick-mic">🎙</span><span>Nota por voz</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="section" aria-labelledby="cryTitle">
+          <h2 id="cryTitle">¿Por qué llora Bichito?</h2>
+          <p class="cry-intro">Revísalo por descarte y marca lo que ya comprobaste.</p>
+          <div class="cry-list" id="cryList"></div>
+        </section>
+
+        <section class="section">
+          <div class="head">
+            <h2 id="listTitle">Hoy</h2>
+            <button class="link" id="clear">Limpiar día</button>
+          </div>
+          <div class="timeline" id="list"></div>
+        </section>
+      </section>
+
+      <section id="history" class="hide">
+        <p class="date">Tu registro local</p>
+        <h1>Historia y evolución</h1>
+        <article class="panel">
+          <h2>Últimos 7 días</h2>
+          <p class="small">
+            Toca un día para revisarlo y editar sus registros con calma.
+          </p>
+          <div class="stats" id="stats"></div>
+          <div class="feed-insights" id="feedInsights"></div>
+          <div class="days" id="days"></div>
+          <hr
+            style="border: 0; border-top: 1px solid var(--l); margin: 17px 0"
+          />
+          <h2>Respaldo</h2>
+          <p class="note">
+            Guarda una copia o recupérala en este mismo dispositivo.
+          </p>
+          <div class="actions">
+            <button class="secondary" id="export">Descargar copia</button
+            ><button class="secondary" id="import">Recuperar copia</button>
+          </div>
+          <input class="hide" type="file" id="file" accept="application/json" />
+        </article>
+      </section>
+
+      <section class="hide" id="wardrobe">
+        <div id="wardrobe-root"></div>
+      </section>
+    </main>
+
+    <nav class="nav">
+      <button class="active" data-view="today">⌂<br />Hoy</button>
+      <button data-view="history">◷<br />Historia</button>
+      <button data-view="wardrobe">👗<br />Armario 3D</button>
+    </nav>
+
+    <dialog id="record">
+      <form method="dialog" class="sheet">
+        <div class="head">
+          <h2 id="recordTitle">Añadir detalles</h2>
+          <button class="x" type="button" id="closeRecord">×</button>
+        </div>
+        <label class="field"
+          >Tipo<select id="type">
+            <option value="sleepStart">Inicio de sueño / siesta</option>
+            <option value="sleepEnd">Fin de sueño / despertó</option>
+            <option value="feedingStart">Empezó con hambre / toma</option>
+            <option value="feeding">Terminó la leche (Toma completa)</option>
+            <option value="diaper">Cambio de pañal</option>
+            <option value="note">Nota libre</option>
+          </select></label
+        >
+        <label class="field"
+          >Fecha y hora<input id="time" type="datetime-local"
+        /></label>
+
+        <div class="details" id="sleepFields">
+          <label class="field"
+            >Cómo o dónde durmió (opcional)<select id="sleepPlace">
+              <option value="">Sin detalle</option>
+              <option>En su cuna / cama</option>
+              <option>En brazos / porteo</option>
+              <option>En coche / paseo</option>
+              <option>Sueño nocturno</option>
+            </select></label
+          >
+        </div>
+
+        <div class="details" id="feedFields">
+          <label class="field"
+            >Hora en que empezó con hambre (opcional)<input id="hungerStart" type="datetime-local"
+          /></label>
+          <label class="field"
+            >Cómo tomó<select id="method">
+              <option value="">Sin detalle</option>
+              <option>Pecho</option>
+              <option>Mamadera (Fórmula)</option>
+              <option>Mamadera (Leche materna)</option>
+              <option>Mixto</option>
+              <option>Otro</option>
+            </select></label
+          ><label class="field"
+            >Cantidad ml (opcional)<input id="amount" type="number" min="0" placeholder="Ej. 120"
+          /></label>
+        </div>
+
+        <div class="details" id="diaperFields">
+          <label class="field"
+            >Contenido del pañal<select id="kind">
+              <option value="">Sin detalle (pendiente)</option>
+              <option>Solo pipí (orinó)</option>
+              <option>Popó</option>
+              <option>Mixto (pipí y popó)</option>
+              <option>Seco / preventivo</option>
+            </select></label
+          >
+        </div>
+
+        <div class="details show" id="noteFields">
+          <label class="field">Observaciones / Nota (opcional)<input id="note" maxlength="180" placeholder="Anótalo con calma..." /></label>
+        </div>
+
+        <button class="primary" id="save" value="default" style="margin-top: 16px;">
+          Guardar detalles</button
+        ><button class="secondary hide" type="button" id="remove" style="margin-top: 8px;">
+          Eliminar este registro
+        </button>
+      </form>
+    </dialog>
+
+    <dialog id="prefs">
+      <section class="sheet">
+        <div class="head">
+          <h2>Perfil y ajustes</h2>
+          <button class="x" id="closePrefs">×</button>
+        </div>
+        <label class="field"
+          >Nombre o apodo<input id="name" maxlength="24" /></label
+        ><label class="field"
+          >Fecha de nacimiento (opcional)<input id="birth" type="date" /></label
+        ><label class="field"
+          >Ventana despierto inicial<select id="wake">
+            <option value="60">1 hora</option>
+            <option value="90">1 h 30 min</option>
+            <option value="120">2 h</option>
+            <option value="150">2 h 30 min</option>
+            <option value="180">3 h</option>
+          </select></label
+        ><label class="check"
+          ><input id="remind" type="checkbox" />Avisarme mientras Bichito está
+          abierto cuando se acerque la siesta.</label
+        ><button class="primary" id="savePrefs">Guardar ajustes</button>
+        <p class="note">
+          La predicción se adapta con las siestas y tomas reales.
+        </p>
+      </section>
+    </dialog>
+
+    <dialog id="talk">
+      <section class="sheet">
+        <div class="head">
+          <h2>Cuéntame</h2>
+          <button class="x" id="closeTalk">×</button>
+        </div>
+        <p class="note">
+          Por ejemplo: “empezó con hambre”, “terminó la leche”, “se durmió”, “despertó” o “cambio de pañal”.
+        </p>
+        <p class="panel small" id="heard">Toca el botón y habla.</p>
+        <label class="field">Nota reconocida o escrita
+          <textarea id="voiceText" rows="3" placeholder="Escribe aquí si el dictado no transcribe tu voz."></textarea>
+        </label>
+        <button class="primary" id="listen">Empezar a escuchar</button
+        ><button class="secondary" id="saveTalk" style="margin-top: 8px;">Guardar registro</button>
+      </section>
+    </dialog>
+
+    <div class="toast" id="toast"></div>
+    <script src="/app.js?v=20261118-1215"></script>
+    <script src="/family.js?v=20261118-1215"></script>
+    <script type="module" src="/cloud.js?v=20261118-1215"></script>
+    <script type="module" src="/wardrobe.js"></script>
+  </body>
+</html>
